@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:weightSum="10">
+
+    <ListView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:id="@+id/lvDispositivos"
+        android:layout_weight="8" />
+
+    <ImageButton
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:id="@+id/ibHome"
+        android:layout_gravity="center_horizontal"
+        android:layout_weight="2"
+        android:src="@mipmap/casa_btn"
+        android:background="@color/blanco"
+        android:contentDescription="@string/descripcion_boton_home" />
+
+</LinearLayout>

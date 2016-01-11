@@ -1,0 +1,49 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+
+        <item name="android:colorBackground">@color/blanco</item>
+
+        <item name="android:actionBarStyle">@style/Tema.ActionBar</item>
+        <item name="actionBarStyle">@style/Tema.ActionBar</item>
+
+        <item name="android:actionModeStyle">@style/Tema.ActionMode</item>
+        <item name="actionModeStyle">@style/Tema.ActionMode</item>
+
+        <item name="android:buttonStyle">@style/Tema.Boton</item>
+        <item name="buttonStyle">@style/Tema.Boton</item>
+    </style>
+
+    <style name="Tema.ActionBar" parent="@style/Widget.AppCompat.Light.ActionBar">
+        <!-- Customize your theme here. -->
+        <item name="android:background">@color/colorPrimary</item>
+        <item name="background">@color/colorPrimary</item>
+
+        <item name="android:titleTextStyle">@style/Tema.TextoTitulo</item>
+        <item name="titleTextStyle">@style/Tema.TextoTitulo</item>
+    </style>
+
+    <style name="Tema.ActionMode" parent="@style/Widget.AppCompat.ActionMode">
+        <!-- Customize your theme here. -->
+        <item name="android:background">@color/colorPrimary</item>
+        <item name="background">@color/colorPrimary</item>
+    </style>
+
+    <style name="Tema.TextoTitulo" parent="@style/TextAppearance.AppCompat.Widget.ActionBar.Title">
+        <!-- Customize your theme here. -->
+        <item name="android:textColor">@color/blanco</item>
+    </style>
+
+    <style name="Tema.Boton" parent="@android:style/Widget.Button">
+        <!-- Customize your theme here. -->
+        <item name="android:background">@color/colorPrimary</item>
+        <item name="android:textColor">@color/blanco</item>
+        <item name="android:layout_gravity">center</item>
+    </style>
+
+</resources>
