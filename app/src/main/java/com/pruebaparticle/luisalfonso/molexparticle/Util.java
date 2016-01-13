@@ -1,6 +1,7 @@
 package com.pruebaparticle.luisalfonso.molexparticle;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -9,10 +10,22 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.os.Environment;
+import android.os.Vibrator;
+import android.support.annotation.NonNull;
 import android.util.Log;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import io.particle.android.sdk.cloud.ParticleCloud;
+import io.particle.android.sdk.cloud.ParticleCloudException;
+import io.particle.android.sdk.cloud.ParticleCloudSDK;
+import io.particle.android.sdk.cloud.ParticleDevice;
+import io.particle.android.sdk.utils.Async;
 
 /**
  * Clase Util: Contiene funciones publicas y estaticas que se utilizan de manera repetitiva en la app, se agrupan aqui para acceder a
@@ -21,7 +34,41 @@ import java.io.File;
  */
 public class Util {
 
-    private final static String Tag = "SP Util";
+    //Tags para los mensajes del LogCat
+    private final static String TAG_UTIL = "SP Util";
+    public final static String TAG_DSA = "SP DSeleccionadoA";
+    public final static String TAG_EM = "SP EditarModulos";
+    public final static String TAG_DA = "SP DispositivosA";
+    public final static String TAG_HAD = "SP HActualizarD";
+    public static final String TAG_ISA = "SP IniciarSesionA";
+
+    //Constantes utilizadas frecuentemente en las clases
+    public static final int TIEMPO_VIBRACION = 60;
+    public static final int MAX_TAM_IMAGEN_AVATAR = 6000000;      //Maximo tamanio en bits que puede cubrir un avatar
+    public final static int MAX_TAM_IMAGEN_MODULO = 2000000;      //Maximo tamanio en bits de la imagen de un modulo
+    public final static int NUMERO_MODULOS = 3;                   //Numero de modulos por cada dispositivo SmartPower
+    public final static int ERROR = -1;
+    public final static int ENCENDIDO = 1;
+    public final static int APAGADO = 0;
+
+    public static final boolean CONECTADO = true;
+    public static final boolean DESCONECTADO = false;
+
+    private static Vibrator vibrador;
+    private static Boolean posible_vibrar = null;
+
+    /**
+     * vibrar: ocasiona una breve vibracion en el smartphone para indicarle al usuario que se realizo una accion (por
+     * ejemplo presionar un boton)
+     * @param activity: activity actual en la que se encunetra la app que proporcionara el contexto para la vibracion
+     */
+    public static void vibrar(Activity activity){
+        if (posible_vibrar == null) {
+            vibrador = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+            posible_vibrar = vibrador.hasVibrator();
+        }
+        if (posible_vibrar) vibrador.vibrate(TIEMPO_VIBRACION);
+    }
 
     /**
      * cortarImagenCircuilar: corta una imagen para que quede con una forma circular (codigo obtenido de la discusion
@@ -110,20 +157,20 @@ public class Util {
         String estado_almacenamiento = Environment.getExternalStorageState();
         if (Environment.MEDIA_MOUNTED.equals(estado_almacenamiento)) {      //Si hay un almacenamiento externo montado
             if (!directorio.exists()) {                                 //Si no existe el directorio de la app
-                Log.i(Tag, "No existe direcotirio, activity: " + activity.getLocalClassName());
+                Log.i(TAG_UTIL, "No existe direcotirio, activity: " + activity.getLocalClassName());
                 if (!directorio.mkdirs()) {                             //Si no se puede crear
-                    Log.w(Tag, "No se pudo crear un directorio, activity" + activity.getLocalClassName());
+                    Log.w(TAG_UTIL, "No se pudo crear un directorio, activity" + activity.getLocalClassName());
                     return false;
                 } else return true;
             } else return true;
         }
         else if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(estado_almacenamiento)) {   //Si existe un almacenamiento pero
             toast(activity, activity.getString(R.string.almacenamiento_no_escritura));     //solo nos permite leer y no escribir
-            Log.w(Tag, "Solo es posible leer en el almacenamiento externo, activity" + activity.getLocalClassName());
+            Log.w(TAG_UTIL, "Solo es posible leer en el almacenamiento externo, activity" + activity.getLocalClassName());
             return false;
         }
         else {
-            Log.w(Tag, "No se puede leer ni escribir en el almacenamiento externo, activity: " + activity.getLocalClassName());
+            Log.w(TAG_UTIL, "No se puede leer ni escribir en el almacenamiento externo, activity: " + activity.getLocalClassName());
             toast(activity, activity.getString(R.string.almacenamiento_no_escritura_lectura));
             return false;
         }
@@ -133,4 +180,210 @@ public class Util {
         Toast.makeText(activity.getApplicationContext(), mensaje, Toast.LENGTH_SHORT).show();
     }
 
+    /**
+     * clase ParticleAPI: Clase auxiliar para hacer lo relacionado con acceder a la nube de Particle
+     */
+    public static class ParticleAPI{
+
+        static private ParticleCloud nube_particle;
+
+        public static ParticleCloud obtenerNubeParticle(){
+            return nube_particle;
+        }
+
+        public static void iniciarSesion(final IniciarSesionActivity activity, final String email, final String contrasena){
+            //Ejecutamos otro hilo para iniciar sesion como nos indica la documentacion oficial en https://docs.particle.io/photon/android/
+            Async.executeAsync(ParticleCloudSDK.getCloud(), new Async.ApiWork<ParticleCloud, List<ParticleDevice>>() {
+                @Override
+                public List<ParticleDevice> callApi(@NonNull ParticleCloud nueva_nube_particle) throws ParticleCloudException, IOException {
+                    nube_particle = nueva_nube_particle;
+                    nueva_nube_particle.logIn(email, contrasena);
+                    return nueva_nube_particle.getDevices();
+                }
+
+                @Override
+                public void onSuccess(List<ParticleDevice> ParticleDevices) {
+                    Util.toast(activity, activity.getString(R.string.sesion_iniciada));
+
+                    ArrayList<String> nombres_dispositivos = new ArrayList<>();
+                    ArrayList<String> ids_dispositivos = new ArrayList<>();
+                    ArrayList<String> conexion_dispositivos = new ArrayList<>();
+                    for (ParticleDevice dispositivo : ParticleDevices) {                  //Obtenemos el id, nombre y estado de conexion de
+                        nombres_dispositivos.add(dispositivo.getName());            //cada dispositivo
+                        ids_dispositivos.add(dispositivo.getID());
+                        conexion_dispositivos.add(dispositivo.isConnected() ? activity.getString(R.string.online) :
+                                activity.getString(R.string.offline));
+                    }
+
+                    activity.iniciarSesionExito(nombres_dispositivos, ids_dispositivos, conexion_dispositivos);
+                }
+
+                @Override
+                public void onFailure(ParticleCloudException e) {
+                    Util.toast(activity, activity.getString(R.string.sesion_no_iniciada));
+                    activity.iniciarSesionFracaso();
+                    Log.w(TAG_UTIL, "No se pudo iniciar sesion");
+                }
+            });
+        }
+
+        public static void cerrarSesion() {
+            Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
+                @Override
+                public Void callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
+                    nube_particle.logOut();
+                    return null;
+                }
+                @Override
+                public void onSuccess(Void v) {
+                }
+                @Override
+                public void onFailure(ParticleCloudException exception) {
+                    Log.e(TAG_UTIL, "No se puede cerrar sesion de Particle");
+                }
+            });
+        }
+
+        public static void eliminarDispositivo(final Activity activity,
+                                               final ArrayList<String> ids_dispositivos_seleccionados) {
+            Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
+                @Override
+                public Void callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
+                    ArrayList<ParticleDevice> dispositivos_eliminar = new ArrayList<>();
+                    for (String id : ids_dispositivos_seleccionados)
+                        dispositivos_eliminar.add(nube_particle.getDevice(id));
+                    for (ParticleDevice dispositivo : dispositivos_eliminar) {
+                        dispositivo.unclaim();
+                    }
+                    return null;
+                }
+
+                @Override
+                public void onSuccess(Void avoid) {
+                }
+
+                @Override
+                public void onFailure(ParticleCloudException exception) {
+                    Util.toast(activity, activity.getString(R.string.error_borrar_dispositivos));
+                    Log.e(TAG_UTIL, "No se pudo eliminar el dispositivo: " + exception.toString());
+                }
+            });
+        }
+
+        public static void cambiarNombreDispositivo(final String id_dispositivo,
+                                                    final String nombre_dispositivo_nuevo) {
+            Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
+                @Override
+                public Void callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
+                    nube_particle.getDevice(id_dispositivo).setName(nombre_dispositivo_nuevo);
+                    return null;
+                }
+
+                @Override
+                public void onSuccess(Void aVoid) {
+                    Log.i(TAG_UTIL, "Nombre de dispositivo actualizado en la nube de Particle");
+                }
+
+                @Override
+                public void onFailure(ParticleCloudException exception) {
+                    Log.e(TAG_UTIL, exception.toString());
+                }
+            });
+        }
+
+        public static void leerVariableEstadoModulo(final AdaptadorListaModulos adaptador,
+                                                    final Integer numero_modulo, final String id_dispositivo,
+                                                    final TextView nombre_modulo) {
+            Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Integer>() {
+                @Override
+                public Integer callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
+                    Integer estado_modulo = ERROR;
+                    try {
+                        switch (numero_modulo) {
+                            case 0:
+                                estado_modulo = (Integer)nube_particle.getDevice(id_dispositivo).getVariable("estado_modulo_1");
+                                break;
+                            case 1:
+                                estado_modulo = (Integer)nube_particle.getDevice(id_dispositivo).getVariable("estado_modulo_2");
+                                break;
+                            case 2:
+                                estado_modulo = (Integer)nube_particle.getDevice(id_dispositivo).getVariable("estado_modulo_3");
+                        }
+                    }
+                    catch (Exception e){
+                        Log.e("SP AdapadosListaM", e.toString());
+                    }
+                    return estado_modulo;
+                }
+
+                @Override
+                public void onSuccess(Integer estado) {
+                    if (estado == ENCENDIDO)
+                        adaptador.notificarEstadoEncendido(nombre_modulo);
+                    else if (estado == APAGADO)
+                        adaptador.notificarEstadoApagado(nombre_modulo);
+                    else if (estado == ERROR){
+                        adaptador.notificarEstadoError(nombre_modulo);
+                    }
+                }
+
+                @Override
+                public void onFailure(ParticleCloudException exception) {
+                    adaptador.notificarEstadoError(nombre_modulo);
+                    Log.e("SP AdapadosListaM", exception.toString());
+                }
+            });
+        }
+
+        public static void funcionApagarTodo(final Activity activity) {
+            Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Integer>() {
+                @Override
+                public Integer callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
+                    int resultado = 0;
+                    int count = 0;
+                    for (ParticleDevice dispositivo : nube_particle.getDevices()) {
+                        try {
+                            resultado += dispositivo.callFunction("apagar_todo");
+                        } catch (Exception e) {
+                            throw new ParticleCloudException(e);
+                        }
+                        count++;
+                    }
+                    if (resultado != count) return ERROR;
+                    return APAGADO;
+                }
+
+                @Override
+                public void onSuccess(Integer resultado) {
+                    if (resultado == APAGADO) toast(activity, activity.getString(R.string.exito_apagar_todo));
+                    else toast(activity, activity.getString(R.string.error_apagar_todo));
+                }
+
+                @Override
+                public void onFailure(ParticleCloudException e) {
+                    Log.e(TAG_DA, "No se pudo llamar la funcion apagar todo en un dispositivo:" + e.toString());
+                    toast(activity, activity.getString(R.string.error_apagar_todo));
+                }
+            });
+        }
+
+        public static void agregarDispositivo(final Activity activity, final String id) {
+            Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
+                public Void callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
+                    nube_particle.claimDevice(id);
+                    return null;
+                }
+
+                @Override
+                public void onSuccess(Void aVoid) {
+                    toast(activity, activity.getString(R.string.dispositivo_agregado));
+                }
+
+                @Override
+                public void onFailure(ParticleCloudException e) {
+                    Log.e(Util.TAG_DA, "No se puede agregar el dispositovo: " + e.getBestMessage());
+                }
+            });
+        }
+    }
 }

@@ -34,4 +34,13 @@
     <string name="dialogo_cerrar_sesion_si">Sí</string>
     <string name="eliminar">Borrar</string>
     <string name="error_borrar_dispositivos">No se pudo eliminar a los dispositivos</string>
+    <string name="cambios_no_guardados">No se pudieron guardar los cambios</string>
+    <string name="filtrar_dispositivos">Filtrar dispositivos</string>
+    <string name="exito_apagar_todo">Se han apagado todos los módulos</string>
+    <string name="error_apagar_todo">Ha surgido un error al intentar apagar todo</string>
+    <string name="agregar_dispositivos">Agregar Dispositivos</string>
+    <string name="dialogo_agregar_dispositivo">Agregar Dispositivo</string>
+    <string name="mensaje_dialogo_agregar_dispositivo">Introduce el id del nuevo dispositivo:</string>
+    <string name="dispositivo_agregado">Dispositivo añadido</string>
+    <string name="configurar_dispositivo">Configurar Nuevo Dispositivo</string>
 </resources>

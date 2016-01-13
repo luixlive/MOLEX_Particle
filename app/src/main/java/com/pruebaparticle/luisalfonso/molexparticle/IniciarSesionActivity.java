@@ -20,14 +20,9 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
-import io.particle.android.sdk.cloud.SparkCloud;
-import io.particle.android.sdk.cloud.SparkCloudException;
-import io.particle.android.sdk.cloud.SparkDevice;
-import io.particle.android.sdk.utils.Async;
+import io.particle.android.sdk.cloud.ParticleCloudSDK;
 
 /**
  * Clase IniciarSesionActivity: activity main de la app, donde el usuario inicia sesion en ParticleCloud
@@ -35,11 +30,12 @@ import io.particle.android.sdk.utils.Async;
  */
 public class IniciarSesionActivity extends AppCompatActivity {
 
-    private static final String Tag = "SP IniciarSesionA";
-
     private File directorio_app;                //ruta del directorio de la app en el almacenamiento externo
 
     private EditText et_contrasena;
+    private Button boton_iniciar_sesion;
+
+    private String email;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +44,8 @@ public class IniciarSesionActivity extends AppCompatActivity {
 
         prepararDirectorioApp();
         prepararEditTexts();
+
+        ParticleCloudSDK.init(getApplicationContext());
     }
 
     /**
@@ -56,57 +54,19 @@ public class IniciarSesionActivity extends AppCompatActivity {
      * @param boton: objeto que representa la vista del boton de inicio de sesion
      */
     public void iniciarSesion(final View boton){
-        Log.i(Tag, "Intento de inicio de sesion");
-        final Button boton_iniciar_sesion = (Button)boton;
+        Util.vibrar(this);
+        Log.i(Util.TAG_ISA, "Intento de inicio de sesion");
+        boton_iniciar_sesion = (Button)boton;
         boton_iniciar_sesion.setBackgroundColor(ContextCompat.getColor(this, R.color.blanco));
         boton_iniciar_sesion.setTextColor(ContextCompat.getColor(this, R.color.colorPrimary));
         boton_iniciar_sesion.setClickable(false);
 
         EditText et_email = (EditText)findViewById(R.id.etEmail);       //Obtenemos los strings del correo y contraseña
         EditText et_pass = (EditText)findViewById(R.id.etPass);         //escritos por el usuario
-        final String email = et_email.getText().toString();
+        email = et_email.getText().toString();
         final String pass = et_pass.getText().toString();
 
-        //Ejecutamos otro hilo para iniciar sesion como nos indica la documentacion oficial en https://docs.particle.io/photon/android/
-        Async.executeAsync(SparkCloud.get(getApplicationContext()), new Async.ApiWork<SparkCloud, List<SparkDevice>>() {
-            @Override
-            public List<SparkDevice> callApi(SparkCloud sparkCloud) throws SparkCloudException, IOException {
-                sparkCloud.logIn(email, pass);
-                return sparkCloud.getDevices();
-            }
-
-            @Override
-            public void onSuccess(List<SparkDevice> sparkDevices) {
-                Util.toast(IniciarSesionActivity.this, getString(R.string.sesion_iniciada));
-                ArrayList<String> nombres_dispositivos = new ArrayList<>();
-                ArrayList<String> ids_dispositivos = new ArrayList<>();
-                ArrayList<String> conexion_dispositivos = new ArrayList<>();
-                for (SparkDevice dispositivo : sparkDevices) {                  //Obtenemos el id, nombre y estado de conexion de
-                    nombres_dispositivos.add(dispositivo.getName());            //cada dispositivo
-                    ids_dispositivos.add(dispositivo.getID());
-                    conexion_dispositivos.add(dispositivo.isConnected() ? IniciarSesionActivity.this.getString(R.string.online) :
-                            IniciarSesionActivity.this.getString(R.string.offline));
-                }
-
-                Intent intent = new Intent(getApplicationContext(), DispositivosActivity.class);    //Enviamos la informacion obtenida
-                intent.putStringArrayListExtra("nombres_dispositivos", nombres_dispositivos);       //a la activity DispositivosActivity
-                intent.putStringArrayListExtra("ids_dispositivos", ids_dispositivos);
-                intent.putStringArrayListExtra("conexion_dispositivos", conexion_dispositivos);
-                intent.putExtra("directorio_app", directorio_app.toString() + File.separator + email);
-                finish();
-                Log.i(Tag, "Inicio de sesion exitoso, cambio de Activity a DispositivosActivity");
-                startActivity(intent);
-            }
-
-            @Override
-            public void onFailure(SparkCloudException e) {
-                Util.toast(IniciarSesionActivity.this, getString(R.string.sesion_no_iniciada));
-                boton_iniciar_sesion.setBackgroundColor(ContextCompat.getColor(IniciarSesionActivity.this, R.color.colorPrimary));
-                boton_iniciar_sesion.setTextColor(ContextCompat.getColor(IniciarSesionActivity.this, R.color.blanco));
-                boton_iniciar_sesion.setClickable(true);
-                Log.w(Tag, "No se pudo iniciar sesion");
-            }
-        });
+        Util.ParticleAPI.iniciarSesion(this, email, pass);
     }
 
     /**
@@ -142,5 +102,24 @@ public class IniciarSesionActivity extends AppCompatActivity {
                 return false;
             }
         });
+    }
+
+    public void iniciarSesionExito(ArrayList<String> nombres_dispositivos, ArrayList<String> ids_dispositivos,
+                                                ArrayList<String> conexion_dispositivos) {
+
+        Intent intent = new Intent(getApplicationContext(), DispositivosActivity.class);    //Enviamos la informacion obtenida
+        intent.putStringArrayListExtra("nombres_dispositivos", nombres_dispositivos);       //a la activity DispositivosActivity
+        intent.putStringArrayListExtra("ids_dispositivos", ids_dispositivos);
+        intent.putStringArrayListExtra("conexion_dispositivos", conexion_dispositivos);
+        intent.putExtra("directorio_app", directorio_app.toString() + File.separator + email);
+        finish();
+        Log.i(Util.TAG_ISA, "Inicio de sesion exitoso, cambio de Activity a DispositivosActivity");
+        startActivity(intent);
+    }
+
+    public void iniciarSesionFracaso() {
+        boton_iniciar_sesion.setBackgroundColor(ContextCompat.getColor(IniciarSesionActivity.this, R.color.colorPrimary));
+        boton_iniciar_sesion.setTextColor(ContextCompat.getColor(IniciarSesionActivity.this, R.color.blanco));
+        boton_iniciar_sesion.setClickable(true);
     }
 }

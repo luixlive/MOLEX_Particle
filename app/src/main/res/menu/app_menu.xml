@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item android:id="@+id/iFiltrar_dispositivos"
+        android:icon="@mipmap/icono_filtrar"
+        android:title="@string/filtrar_dispositivos"
+        app:showAsAction="always"/>
+
+    <item android:id="@+id/iSetup_dispositivo"
+        android:icon="@mipmap/icono_setup"
+        android:title="@string/configurar_dispositivo"
+        app:showAsAction="ifRoom"/>
+
+    <item android:id="@+id/iAgregar_dispositivos"
+        android:icon="@mipmap/icono_agregar"
+        android:title="@string/agregar_dispositivos"
+        app:showAsAction="ifRoom"/>
+
+</menu>

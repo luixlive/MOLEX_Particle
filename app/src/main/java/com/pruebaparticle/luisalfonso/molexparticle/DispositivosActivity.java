@@ -6,8 +6,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Rect;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -21,20 +19,18 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
+import android.widget.EditText;
+import android.widget.GridView;
 import android.widget.ImageButton;
-import android.widget.ListView;
+import android.widget.LinearLayout;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import io.particle.android.sdk.cloud.SparkCloud;
-import io.particle.android.sdk.cloud.SparkCloudException;
-import io.particle.android.sdk.cloud.SparkDevice;
-import io.particle.android.sdk.utils.Async;
+import io.particle.android.sdk.devicesetup.ParticleDeviceSetupLibrary;
+
+import static android.text.InputType.TYPE_CLASS_NUMBER;
 
 /**
  * Clase DispositivosActivity: muestra la lista con los dispositivos Photon asociados a la cuenta que esta iniciada y muestra
@@ -43,13 +39,8 @@ import io.particle.android.sdk.utils.Async;
  */
 public class DispositivosActivity extends AppCompatActivity {
 
-    private final static String Tag = "SP DispositivosA";
-
-    private static final int REQUEST_CODE = 1215;                   //Codigo para el intent que permitira al usuario elegir un avatar
-    private static final int MAX_TAM_IMAGEN = 6000000;              //Maximo tamanio en bits que puede cubrir un avatar
+    private static final int REQUEST_CODE_DISPOSITIVO_SELECCIONADO = 1214;
     private static final double RELACION_WIDTH_AVATARES = 1.0 / 3;  //Relacion de los avatares respecto a la pantalla del smartphone
-    private static final boolean CONECTADO = true;
-    private static final boolean DESCONECTADO = false;
 
     private ArrayList<String> nombres_dispositivos; //Informacion de los dispositivos y del almacenamiento en el smartphone del usuario
     private ArrayList<String> ids_dispositivos;
@@ -60,10 +51,10 @@ public class DispositivosActivity extends AppCompatActivity {
     private int numero_dispositivos;
 
     private AdaptadorListaDispositivos adaptador;
+    private boolean dispositivos_seleccionados[];
 
     private static HiloActualizarDispositivos hilo_actualizar_dispositivos;  //Runnable que correra sobre otro hilo para actualizar la conexion
 
-    private int index_imagen_a_reemplazar;
     private int ancho_avatar;
 
     @Override
@@ -73,31 +64,62 @@ public class DispositivosActivity extends AppCompatActivity {
 
         capturarInformacionSesion();
         prepararAvatares();
+
+        //Si la activity se reinicia (por ejemplo si el usuario gira su celular) se recuperan los dispositivos que tenia
+        //seleccionados (si es que tenia alguno)
+        if (savedInstanceState != null){
+            dispositivos_seleccionados = savedInstanceState.getBooleanArray("DispositivosSeleccionado");
+        } else{
+            dispositivos_seleccionados = new boolean[numero_dispositivos];
+            for (int index = 0; index < numero_dispositivos; index++)
+                dispositivos_seleccionados[index] = false;
+        }
+
         crearListaDispositivos();
         iniciarEventoBotonHome();
         iniciarHiloActualizacionConexiones();
     }
 
     @Override
+    public boolean onCreateOptionsMenu(Menu menu){
+        getMenuInflater().inflate(R.menu.app_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item){
+        switch(item.getItemId()){
+            case R.id.iFiltrar_dispositivos:
+                Util.vibrar(this);
+                if (adaptador.filtrarDispositivosPresionado())
+                    item.setIcon(R.mipmap.icono_quitar_filtrado);
+                else item.setIcon(R.mipmap.icono_filtrar);
+                return true;
+            case R.id.iSetup_dispositivo:
+                Util.vibrar(this);
+                ParticleDeviceSetupLibrary.startDeviceSetup(this);
+                return true;
+            case R.id.iAgregar_dispositivos:
+                Util.vibrar(this);
+                dialogoAgregarDispositivo();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle state){  //En caso de reiniciar la actividad (al girar la orientacion del celular
+        //por ejemplo) se guardan los dispositivos que se tenian seleccionados.
+        state.putBooleanArray("DispositivosSeleccionado", dispositivos_seleccionados);
+        super.onSaveInstanceState(state);
+    }
+
+    @Override
     protected void onDestroy() {
         if(isFinishing()) {
             hilo_actualizar_dispositivos.interrumpir();
-            Async.executeAsync(SparkCloud.get(getApplicationContext()), new Async.ApiWork<SparkCloud, Void>() {
-                @Override
-                public Void callApi(SparkCloud sparkCloud) throws SparkCloudException, IOException {
-                    SparkCloud.get(DispositivosActivity.this).logOut();
-                    return null;
-                }
-
-                @Override
-                public void onSuccess(Void v) {
-                }
-
-                @Override
-                public void onFailure(SparkCloudException exception) {
-                    Log.e(Tag, "No se puede cerrar sesion de Particle");
-                }
-            });
+            Util.ParticleAPI.cerrarSesion();
         }
         super.onDestroy();
     }
@@ -119,7 +141,7 @@ public class DispositivosActivity extends AppCompatActivity {
 
         conexion_dispositivos = new ArrayList<>();
         for (String conexion: conexion_dispositivos_string)
-            conexion_dispositivos.add(conexion.equals(getString(R.string.online)) ? CONECTADO: DESCONECTADO);
+            conexion_dispositivos.add(conexion.equals(getString(R.string.online)) ? Util.CONECTADO: Util.DESCONECTADO);
     }
 
     /**
@@ -136,15 +158,17 @@ public class DispositivosActivity extends AppCompatActivity {
      * servidor de Particle y crea un evento para iniciar la activity DispositivoSeleccionadoActivity cuando pulsen un dispositivo
      */
     private void crearListaDispositivos() {
-        ListView dispositivos = (ListView) findViewById(R.id.lvDispositivos);
+        GridView dispositivos = (GridView) findViewById(R.id.gvDispositivos);
         adaptador = new AdaptadorListaDispositivos(DispositivosActivity.this, nombres_dispositivos, conexion_dispositivos,
-                obtenerAvatares(ids_dispositivos));
+                obtenerAvatares());
         dispositivos.setAdapter(adaptador);
 
         dispositivos.setOnItemClickListener(new AdapterView.OnItemClickListener() {     //Si pulsan algun dispositivo en la lista
             @Override
             //(mientras que no sea el avatar)
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Util.vibrar(DispositivosActivity.this);
+
                 ((View) (view.getParent())).setBackgroundColor(ContextCompat.getColor(DispositivosActivity.this, R.color.gris_seleccion));
                 Intent intent = new Intent(getApplicationContext(), DispositivoSeleccionadoActivity.class);
                 intent.putExtra("nombre_dispositivo", nombres_dispositivos.get(position));
@@ -154,16 +178,23 @@ public class DispositivosActivity extends AppCompatActivity {
                 intent.putExtra("directorio_avatares", directorio_avatares.toString());
                 intent.putExtra("almacenamiento_avatares_posible", almacenamiento_avatares_posible);
                 intent.putExtra("index_dispositivo", position);
-                startActivity(intent);
-                Log.i(Tag, "Se pulso al dispositivo numero: " + position + ". Iniciando activity DispositivoSeleccionadoActivity");
+                startActivityForResult(intent, REQUEST_CODE_DISPOSITIVO_SELECCIONADO);
+                Log.i(Util.TAG_DA, "Se pulso al dispositivo numero: " + position + ". Iniciando activity DispositivoSeleccionadoActivity");
                 ((View) (view.getParent())).setBackgroundColor(ContextCompat.getColor(DispositivosActivity.this, R.color.blanco));
             }
         });
 
-        dispositivos.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE_MODAL);        //Si mantienen pulsado un dispositivo, aparece la opcion de
+        crearContextMenu(dispositivos);
+    }
+
+    /**
+     * crearContextMenu: crea el menu que apaerce en la parte superior de la app al mantener pulsado un item de la lista de
+     * dispositivos, este menu permite eliminar uno o varios dispositivos a la vez
+     * @param dispositivos: ListView de la lista a la que se le agrega el Context Menu
+     */
+    private void crearContextMenu(final GridView dispositivos) {
+        dispositivos.setChoiceMode(GridView.CHOICE_MODE_MULTIPLE_MODAL);        //Si mantienen pulsado un dispositivo, aparece la opcion de
         dispositivos.setMultiChoiceModeListener(new AbsListView.MultiChoiceModeListener() {     //elegir mas y eliminarlos
-            boolean dispositivos_seleccionados[] = new boolean[nombres_dispositivos.size()];
-            ArrayList<String> ids_dispositivos_seleccionados;
 
             @Override
             public void onItemCheckedStateChanged(ActionMode mode, int position, long id, boolean checked) {
@@ -175,7 +206,9 @@ public class DispositivosActivity extends AppCompatActivity {
             @Override
             public boolean onCreateActionMode(ActionMode mode, Menu menu) {
                 for (int index = 0; index < nombres_dispositivos.size(); index++)
-                    dispositivos_seleccionados[index] = false;
+                    adaptador.sombrear(dispositivos_seleccionados[index], index);
+                adaptador.notifyDataSetChanged();
+
                 MenuInflater creador_menu = mode.getMenuInflater();
                 creador_menu.inflate(R.menu.menu_context, menu);
                 return true;
@@ -189,39 +222,14 @@ public class DispositivosActivity extends AppCompatActivity {
             @Override
             public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
                 if (item.getItemId() == R.id.borrar) {
-                    ids_dispositivos_seleccionados = new ArrayList<>();
-                    for (int index = 0; index < dispositivos_seleccionados.length; index++) {
+                    ArrayList<String> ids_dispositivos_seleccionados = new ArrayList<>();
+                    for (int index = 0; index < numero_dispositivos; index++) {
                         if (dispositivos_seleccionados[index]) {
                             ids_dispositivos_seleccionados.add(ids_dispositivos.get(index));
                         }
                     }
 
-                    Async.executeAsync(SparkCloud.get(DispositivosActivity.this), new Async.ApiWork<SparkCloud, ArrayList<SparkDevice>>() {
-                        @Override
-                        public ArrayList<SparkDevice> callApi(SparkCloud sparkCloud) throws SparkCloudException, IOException {
-                            ArrayList<SparkDevice> dispositivos_eliminar = new ArrayList<>();
-                            for (String id : ids_dispositivos_seleccionados)
-                                dispositivos_eliminar.add(sparkCloud.getDevice(id));
-                            return dispositivos_eliminar;
-                        }
-
-                        @Override
-                        public void onSuccess(ArrayList<SparkDevice> dispositivos_eliminar) {
-                            for (SparkDevice dispositivo : dispositivos_eliminar)
-                                try {
-                                    dispositivo.unclaim();
-                                } catch (SparkCloudException e) {
-                                    Util.toast(DispositivosActivity.this, DispositivosActivity.this.getString(R.string.error_borrar_dispositivos));
-                                    Log.e(Tag, "No se pudo eliminar el dispositivo: " + e.getBestMessage());
-                                }
-                        }
-
-                        @Override
-                        public void onFailure(SparkCloudException exception) {
-                            Util.toast(DispositivosActivity.this, DispositivosActivity.this.getString(R.string.error_borrar_dispositivos));
-                            Log.e(Tag, "No se pudo eliminar el dispositivo: " + exception.toString());
-                        }
-                    });
+                    Util.ParticleAPI.eliminarDispositivo(DispositivosActivity.this, ids_dispositivos_seleccionados);
                     return true;
                 }
                 return false;
@@ -239,18 +247,20 @@ public class DispositivosActivity extends AppCompatActivity {
      * iniciarEventoBotonHome: crea un evento con las acciones a realizar cuando se pulse el boton home
      */
     private void iniciarEventoBotonHome() {
-        final ImageButton boton_home = (ImageButton)findViewById(R.id.ibHome);
+        final ImageButton boton_home = (ImageButton) findViewById(R.id.ibHome);
         boton_home.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     ((ImageButton) v).setImageBitmap(BitmapFactory.decodeResource(getResources(), R.mipmap.casa_btn_presionado));
+                    Util.vibrar(DispositivosActivity.this);
                 }
                 if (event.getX() < 0 || event.getY() < 0 || event.getX() > boton_home.getWidth() || event.getY() > boton_home.getHeight()) {
                     ((ImageButton) v).setImageBitmap(BitmapFactory.decodeResource(getResources(), R.mipmap.casa_btn));
                 }
                 if (event.getAction() == MotionEvent.ACTION_UP) {
                     ((ImageButton) v).setImageBitmap(BitmapFactory.decodeResource(getResources(), R.mipmap.casa_btn));
+                    Util.ParticleAPI.funcionApagarTodo(DispositivosActivity.this);
                 }
                 return true;
             }
@@ -265,96 +275,57 @@ public class DispositivosActivity extends AppCompatActivity {
         if (hilo_actualizar_dispositivos == null) {                             //Considerando que cada vez que giramos nuestro celular y se
             hilo_actualizar_dispositivos = new HiloActualizarDispositivos(this);    //cambia el modo de visión de la app (landscape) se reinicia
             new Thread(hilo_actualizar_dispositivos).start();                   //la activity de cero, es importante que el hilo no se reinicie
-            Log.i(Tag, "Se inicio el hilo para actualizar la conexion");    //por lo que si no es nulo, no lo volvemos a iniciar
+            Log.i(Util.TAG_DA, "Se inicio el hilo para actualizar la conexion");    //por lo que si no es nulo, no lo volvemos a iniciar
         }
         else hilo_actualizar_dispositivos.setActivity(this);                    //Solamente acualizamos la activity nueva en la clase del hilo
     }
 
-    /**
-     * preguntarUsuario: pregunta al usuario si desea cambiar de avatar. Si se pulsa que si, le permite seleccionar una imagen
-     * de su galeria y sustituye el antiguo avatar con esa imagen
-     */
-    public void preguntarUsuario(int avatar_pulsado){
-        index_imagen_a_reemplazar = avatar_pulsado;
-        AlertDialog.Builder dialogo = new AlertDialog.Builder(this);        //Creamos un dialogo con la pregunta
-        dialogo.setTitle(R.string.dialogo_cambiar_imagen);
-        dialogo.setCancelable(false);
-        dialogo.setMessage(R.string.mensaje_dialogo_cambiar_imagen);
-        dialogo.setPositiveButton(R.string.cambiar_imagen_si, new DialogInterface.OnClickListener() {
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_CODE_DISPOSITIVO_SELECCIONADO && resultCode == Activity.RESULT_OK) {
+            adaptador.setAvatares(obtenerAvatares());
+            adaptador.notifyDataSetChanged();
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    private void dialogoAgregarDispositivo() {
+        AlertDialog.Builder dialogo_agregar_dispositivo = new AlertDialog.Builder(this);
+        dialogo_agregar_dispositivo.setTitle(R.string.dialogo_agregar_dispositivo);
+        dialogo_agregar_dispositivo.setCancelable(false);
+        dialogo_agregar_dispositivo.setMessage(R.string.mensaje_dialogo_agregar_dispositivo);
+
+        //Creamos el cuadro de texto donde el usuario pondra el id de forma programatica
+        final EditText cuadro_texto = new EditText(this);
+        cuadro_texto.setSingleLine();
+        cuadro_texto.setInputType(TYPE_CLASS_NUMBER);
+        LinearLayout.LayoutParams parametros = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT);
+        cuadro_texto.setLayoutParams(parametros);
+        dialogo_agregar_dispositivo.setView(cuadro_texto);
+
+        dialogo_agregar_dispositivo.setPositiveButton(R.string.dialogo_cerrar_sesion_si, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                Intent intent = new Intent();
-                intent.setType("image/*");
-                intent.setAction(Intent.ACTION_GET_CONTENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
-                startActivityForResult(intent, REQUEST_CODE);
+                String nuevo_id = cuadro_texto.getText().toString();
+                Util.ParticleAPI.agregarDispositivo(DispositivosActivity.this, nuevo_id);
             }
         });
-        dialogo.setNegativeButton(R.string.cancelar, new DialogInterface.OnClickListener() {
+        dialogo_agregar_dispositivo.setNegativeButton(R.string.cancelar, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.cancel();
             }
         });
-        AlertDialog alert_dialogo = dialogo.create();
+        AlertDialog alert_dialogo = dialogo_agregar_dispositivo.create();
         alert_dialogo.show();
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_CODE && resultCode == Activity.RESULT_OK)    //Si se contesta nuestro intent
-            try {
-                InputStream stream = getContentResolver().openInputStream(data.getData());
-                Bitmap imagen_nueva = BitmapFactory.decodeStream(stream, new Rect(0, 0, ancho_avatar, ancho_avatar), new BitmapFactory.Options());
-                if (stream != null) stream.close();
-
-                //Intentamos guardar la nueva imagen en otro hilo ya que si la imagen es pesada este proceso podria tardar
-                //Utilizamos AsynkTask, clase recomendada por Android para crear nuevos hilos, documentacion en:
-                //http://developer.android.com/intl/es/reference/android/os/AsyncTask.html
-                final String id = ids_dispositivos.get(index_imagen_a_reemplazar);
-                final Bitmap imagen_vieja = adaptador.getAvatarDispositivo(index_imagen_a_reemplazar);  //Obtenemos la imagen vieja
-                adaptador.setAvatarDispositivo(Util.cortarImagenCircuilar(imagen_nueva), index_imagen_a_reemplazar);                //Ponemos la nueva imagen
-                adaptador.notifyDataSetChanged();
-
-                new AsyncTask<Bitmap, Void, Boolean>() {
-                    @Override
-                    protected Boolean doInBackground(Bitmap... imagenes) {
-                        File ruta_imagen = new File(directorio_avatares + File.separator + id + getString(R.string.tipo_imagen));
-                        FileOutputStream archivo;
-                        try {
-                            archivo = new FileOutputStream(ruta_imagen);
-                            if (imagenes[0].getByteCount() > MAX_TAM_IMAGEN){
-                                imagenes[0].compress(Bitmap.CompressFormat.JPEG, (MAX_TAM_IMAGEN*100/imagenes[0].getByteCount()), archivo);
-                            }
-                            else imagenes[0].compress(Bitmap.CompressFormat.JPEG, 100, archivo);
-                            archivo.close();
-                            Log.i(Tag, "Se cambio de avatar exitosamente");
-                        } catch (Exception e) {
-                            Log.e(Tag, "No se completo exitosamente el guardado de imagen");
-                            return false;
-                        }
-                        return true;
-                    }
-                    @Override
-                    protected void onPostExecute(Boolean resultado){
-                        if (!resultado) {       //Si no se guardo exitosamente avisamos al usuario y ponemos la imagen vieja
-                            adaptador.setAvatarDispositivo(Util.cortarImagenCircuilar(imagen_vieja), index_imagen_a_reemplazar);
-                            Util.toast(DispositivosActivity.this, getString(R.string.guardado_no_exitoso));
-                        }
-                    }
-                }.execute(imagen_nueva);
-            } catch (Exception e) {
-                Log.e(Tag, e.toString());
-            }
-        super.onActivityResult(requestCode, resultCode, data);
     }
 
     /**
      * obtenerAvatares: funcion que extrae los avatares que el usuario habia preestablecido la ultima vez que los modifico
-     * @param ids_dispositivos: ids de los dispositivos Photon, ya que las imagenes se almacenan con los ids
      * @return arreglo que contiene los avatares en el mismo orden que los dispositivos
      */
-    private Bitmap[] obtenerAvatares(ArrayList<String> ids_dispositivos){
+    private Bitmap[] obtenerAvatares(){
         Bitmap avatares_dispositivos[] = new Bitmap[numero_dispositivos];
         if (almacenamiento_avatares_posible){
             String images[] = directorio_avatares.list();      //Obtenemos los archivos dentro del directorio de avatares

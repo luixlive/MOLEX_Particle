@@ -4,6 +4,12 @@ android {
     compileSdkVersion 23
     buildToolsVersion "21.1.2"
 
+    //Fue necesario agregar las siguientes opciones para poder compilar los sdk de PARTICLE
+    packagingOptions {
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/LICENSE.txt'
+    }
+
     defaultConfig {
         applicationId "com.pruebaparticle.luisalfonso.molexparticle"
         minSdkVersion 15
@@ -24,4 +30,5 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:appcompat-v7:23.1.1'
     compile 'io.particle:cloudsdk:0.1.3'
+    compile 'io.particle:devicesetup:0.3.3'
 }

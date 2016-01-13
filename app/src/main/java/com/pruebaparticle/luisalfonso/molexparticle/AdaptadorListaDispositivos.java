@@ -19,12 +19,14 @@ import java.util.ArrayList;
  * Created by LUIS ALFONSO on 18/12/2015.
  */
 public class AdaptadorListaDispositivos extends BaseAdapter {
+
     private ArrayList<String> nombres_dispositivos = new ArrayList<>();
     private ArrayList<Boolean> dispositivos_conectados = new ArrayList<>();
     private ArrayList<Boolean> dispositivos_seleccionados = new ArrayList<>();
     private Bitmap[] avatares_dispositivos;
     private static LayoutInflater inflater = null;
     private DispositivosActivity activity;
+    private boolean filtrar_dispositivos_conectados = false;
 
     public AdaptadorListaDispositivos(DispositivosActivity activity, ArrayList<String> nombres_dispositivos,
                                       ArrayList<Boolean> dispositivos_conectados, Bitmap[] avatares_dispositivos){
@@ -58,16 +60,14 @@ public class AdaptadorListaDispositivos extends BaseAdapter {
             dispositivos_conectados.add(conexiones.get(index));
     }
 
-    public void setAvatarDispositivo(Bitmap avatar, int index){
-        avatares_dispositivos[index] = avatar;
-    }
-
-    public Bitmap getAvatarDispositivo(int index){
-        return avatares_dispositivos[index];
-    }
-
     @Override
     public int getCount() {
+        if (filtrar_dispositivos_conectados){
+            int count = 0;
+            for (boolean conectado: dispositivos_conectados)
+                if (conectado) count++;
+            return count;
+        }
         return nombres_dispositivos.size();
     }
 
@@ -84,34 +84,47 @@ public class AdaptadorListaDispositivos extends BaseAdapter {
     @SuppressLint("InflateParams")
     @Override
     public View getView(final int position, View convertView, ViewGroup parent) {
-        View lv = convertView;
-        if(convertView == null) lv = inflater.inflate(R.layout.device_list_item, null);
-        TextView name = (TextView)lv.findViewById(R.id.tvDeviceName);
-        TextView tv_conexiones = (TextView) lv.findViewById(R.id.tvOnline);
-        ImageView avatar = (ImageView)lv.findViewById(R.id.ivAvatar);
+        View gv = convertView;
+        if(convertView == null) gv = inflater.inflate(R.layout.device_list_item, null);
+        TextView name = (TextView)gv.findViewById(R.id.tvDeviceName);
+        TextView tv_conexiones = (TextView) gv.findViewById(R.id.tvOnline);
+        ImageView avatar = (ImageView)gv.findViewById(R.id.ivAvatar);
 
-        name.setText(nombres_dispositivos.get(position));
-        if (dispositivos_conectados.get(position))
+        int posicion = position;
+        if (filtrar_dispositivos_conectados){
+            posicion = 0;
+            int conteo_regresivo = position;
+            for (boolean conectado: dispositivos_conectados){
+                if (conectado)
+                    conteo_regresivo--;
+                if (conteo_regresivo == -1)
+                    break;
+                posicion++;
+            }
+        }
+
+        name.setText(nombres_dispositivos.get(posicion));
+        if (dispositivos_conectados.get(posicion))
             tv_conexiones.setTextColor(ContextCompat.getColor(activity, R.color.verde_online));
         else
             tv_conexiones.setTextColor(ContextCompat.getColor(activity, R.color.rojo_offline));
-        tv_conexiones.setText(dispositivos_conectados.get(position) ? activity.getString(R.string.online) :
+        tv_conexiones.setText(dispositivos_conectados.get(posicion) ? activity.getString(R.string.online) :
                 activity.getString(R.string.offline));
-        if(avatares_dispositivos[position] != null)
-            avatar.setImageBitmap(avatares_dispositivos[position]);
-
-        avatar.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {               //Si se pulsa un avatar, se lanza el dialogo para cambiarlo
-                activity.preguntarUsuario(position);
-            }
-        });
-
-        if (dispositivos_seleccionados.get(position))
-            lv.setBackgroundColor(ContextCompat.getColor(activity, R.color.gris_seleccion));
-        else lv.setBackgroundColor(ContextCompat.getColor(activity, R.color.blanco));
-
-        return lv;
+        if(avatares_dispositivos[posicion] != null)
+            avatar.setImageBitmap(avatares_dispositivos[posicion]);
+        if (dispositivos_seleccionados.get(posicion))
+            gv.setBackgroundColor(ContextCompat.getColor(activity, R.color.gris_seleccion));
+        else gv.setBackgroundColor(ContextCompat.getColor(activity, R.color.blanco));
+        return gv;
     }
 
+    public void setAvatares(Bitmap[] avatares) {
+        System.arraycopy(avatares, 0, avatares_dispositivos, 0, avatares_dispositivos.length);
+    }
+
+    public boolean filtrarDispositivosPresionado() {
+        filtrar_dispositivos_conectados = !filtrar_dispositivos_conectados;
+        this.notifyDataSetChanged();
+        return filtrar_dispositivos_conectados;
+    }
 }

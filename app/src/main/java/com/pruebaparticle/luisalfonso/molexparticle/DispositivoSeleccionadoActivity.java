@@ -1,15 +1,19 @@
 package com.pruebaparticle.luisalfonso.molexparticle;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Rect;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -18,6 +22,8 @@ import android.widget.TextView;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.Arrays;
 
 /**
@@ -26,9 +32,8 @@ import java.util.Arrays;
  */
 public class DispositivoSeleccionadoActivity extends AppCompatActivity {
 
-    private final static String Tag = "SP DSeleccionadoA";
-
-    private final static int REQUEST_CODE = 2912;
+    private final static int REQUEST_CODE_EDITAR_AVATAR = 2913;
+    private final static int REQUEST_CODE_EDITAR_MODULOS = 2912;
     private final static int NUMERO_MODULOS = 3;
     private final static double RELACION_WIDTH_IMAGEN = 1 / 6.0;
     private final static double RELACION_WIDTH_AVATAR = 1 / 2.0;
@@ -47,9 +52,12 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
     private static TextView tv_conexion_dispositivo;
     private static TextView tv_nombre_dispositivo;
     private ListView lv_modulos;
+    private ImageView iv_avatar;
 
     private int ancho_imagen;
     private int ancho_avatar;
+
+    private static boolean avatar_cambiado = false;
 
     private AdaptadorListaModulos adaptador;
 
@@ -66,11 +74,43 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
     }
 
     /**
+     * cambiarAvatar: se llama al pulsar el avatar, lanza un dialogo que le permite al usuario elegir si desea cambiar su
+     * avatar
+     * @param imagen: vista de la imagen del avatar
+     */
+    public void cambiarAvatar(View imagen){
+        Util.vibrar(this);
+        AlertDialog.Builder dialogo = new AlertDialog.Builder(this);        //Creamos un dialogo con la pregunta
+        dialogo.setTitle(R.string.dialogo_cambiar_imagen);
+        dialogo.setCancelable(false);
+        dialogo.setMessage(R.string.mensaje_dialogo_cambiar_imagen);
+        dialogo.setPositiveButton(R.string.cambiar_imagen_si, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Intent intent = new Intent();
+                intent.setType("image/*");
+                intent.setAction(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                startActivityForResult(intent, REQUEST_CODE_EDITAR_AVATAR);
+            }
+        });
+        dialogo.setNegativeButton(R.string.cancelar, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+        AlertDialog alert_dialogo = dialogo.create();
+        alert_dialogo.show();
+    }
+
+    /**
      * editarDispositivo: se llama cuando el usuario pulsa editar, invoca la activity EditarModulos y se le pasa la informacion
      * que ya se leyo del almacenamiento
      * @param boton: vista del boton editar
      */
     public void editarDispositivo(View boton){
+        Util.vibrar(this);
         boton.setBackgroundColor(ContextCompat.getColor(this, R.color.blanco));
         ((Button)boton).setTextColor(ContextCompat.getColor(this, R.color.colorPrimary));
 
@@ -83,7 +123,7 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
         intent.putExtra("directorio_modulos", directorio_modulos);
         intent.putExtra("almacenamiento_modulos_posible", almacenamiento_modulos_posible);
         intent.putExtra("configuracion_inicial", false);
-        startActivityForResult(intent, REQUEST_CODE);
+        startActivityForResult(intent, REQUEST_CODE_EDITAR_MODULOS);
 
         boton.setBackgroundColor(ContextCompat.getColor(this, R.color.colorPrimary));
         ((Button) boton).setTextColor(ContextCompat.getColor(this, R.color.blanco));
@@ -112,6 +152,7 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
         tv_conexion_dispositivo = (TextView)findViewById(R.id.tvConexionDispositivoGrande);
         tv_nombre_dispositivo = (TextView)findViewById(R.id.tvNombreDispositivoGrande);
         lv_modulos = (ListView)findViewById(R.id.lvModulos);
+        iv_avatar = (ImageView)findViewById(R.id.ivAvatarGrande);
     }
 
     /**
@@ -153,7 +194,7 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
                 intent.putExtra("directorio_modulos", directorio_modulos);
                 intent.putExtra("almacenamiento_modulos_posible", almacenamiento_modulos_posible);
                 intent.putExtra("configuracion_inicial", true);
-                startActivityForResult(intent, REQUEST_CODE);
+                startActivityForResult(intent, REQUEST_CODE_EDITAR_MODULOS);
             }
 
             File archivo_nombres_modulos = new File(directorio_modulos + File.separator + getString(R.string.nombre_archivo_nombres_modulos));
@@ -169,7 +210,7 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
                 texto_archivo_nombres = constructor_texto_leido.toString().split("\n");
                 stream.close();
             } catch (Exception e) {
-                Log.e(Tag, "No se pueden extraer los nombres de los modulos: " + e.toString());
+                Log.e(Util.TAG_DSA, "No se pueden extraer los nombres de los modulos: " + e.toString());
             }
 
             Bitmap[] imagen_modulos = obtenerImagenesModulos(); //Ponemos los nombres y las imagenes en listas
@@ -217,7 +258,6 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
                 }
                 @Override
                 protected void onPostExecute(Bitmap imagen){
-                    ImageView iv_avatar = (ImageView)findViewById(R.id.ivAvatarGrande);
                     iv_avatar.setImageBitmap(imagen);
                 }
             }.execute(directorio_avatares, id_dispositivo);
@@ -241,12 +281,57 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data){
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE){
+        if (requestCode == REQUEST_CODE_EDITAR_MODULOS){
             if (resultCode == RESULT_OK){
                 String nombres_modulos_nuevos[] = data.getStringArrayExtra("nuevos_nombres");
                 adaptador.setNombresModulos(nombres_modulos_nuevos);
                 adaptador.setImagenesModulos(obtenerImagenesModulos());
                 adaptador.notifyDataSetChanged();
+            }
+        } else if (requestCode == REQUEST_CODE_EDITAR_AVATAR){
+            if (resultCode == RESULT_OK) {
+                try{
+                    InputStream stream = getContentResolver().openInputStream(data.getData());
+                    final Bitmap imagen_nueva = BitmapFactory.decodeStream(stream, new Rect(0, 0, ancho_avatar, ancho_avatar), new BitmapFactory.Options());
+                    if (stream != null) stream.close();
+
+                    //Intentamos guardar la imagen en otro hilo, ya que si la imagen es pesada estre proceso podria tardar
+                    //Utilizamos AsyncTask, clase recomendada por Android para crear nuevos hilos, documentacion en:
+                    //http://developer.android.com/intl/es/reference/android/os/AsyncTask.html
+                    new AsyncTask<Bitmap, Void, Boolean>(){
+
+                        @Override
+                        protected Boolean doInBackground(Bitmap... imagenes) {
+                            File ruta_imagen = new File(directorio_avatares + File.separator + id_dispositivo + getString(R.string.tipo_imagen));
+                            FileOutputStream archivo;
+                            try {
+                                archivo = new FileOutputStream(ruta_imagen);
+                                if (imagenes[0].getByteCount() > Util.MAX_TAM_IMAGEN_AVATAR) {
+                                    imagenes[0].compress(Bitmap.CompressFormat.JPEG, (Util.MAX_TAM_IMAGEN_AVATAR * 100 /
+                                            (imagenes[0].getByteCount())), archivo);
+                                } else imagenes[0].compress(Bitmap.CompressFormat.JPEG, 100, archivo);
+                                archivo.close();
+                                Log.i(Util.TAG_DSA, "Se cambio el avatar exitosamente");
+                            } catch(Exception e){
+                                Log.e(Util.TAG_DSA, "No se completo exitosamente el guardado de imagen");
+                                return false;
+                            }
+                            return true;
+                        }
+
+                        @Override
+                        protected  void onPostExecute(Boolean resultado){
+                            if (!resultado){
+                                Util.toast(DispositivoSeleccionadoActivity.this, getString(R.string.guardado_no_exitoso));
+                            } else {
+                                iv_avatar.setImageBitmap(Util.cortarImagenCircuilar(imagen_nueva));
+                                avatar_cambiado = true;
+                            }
+                        }
+                    }.execute(imagen_nueva);
+                }catch (Exception e){
+                    Log.e(Util.TAG_DSA, e.toString());
+                }
             }
         }
     }
@@ -260,9 +345,20 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
     }
 
     @Override
+    public boolean onOptionsItemSelected(MenuItem item){
+        if (item.getItemId() == android.R.id.home){
+            onBackPressed();
+        }
+        return true;
+    }
+
+    @Override
     public void onBackPressed() {
-        super.onBackPressed();
         index_dispositivo = null;
-        finish();
+        if (avatar_cambiado) {
+            setResult(RESULT_OK);
+            avatar_cambiado = false;
+        } else setResult(RESULT_CANCELED);
+        super.onBackPressed();
     }
 }

@@ -1,6 +1,7 @@
 package com.pruebaparticle.luisalfonso.molexparticle;
 
 import android.app.Activity;
+import android.support.annotation.NonNull;
 import android.util.Log;
 
 import java.io.IOException;
@@ -8,14 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
-import io.particle.android.sdk.cloud.SparkCloud;
-import io.particle.android.sdk.cloud.SparkCloudException;
-import io.particle.android.sdk.cloud.SparkDevice;
+import io.particle.android.sdk.cloud.ParticleCloud;
+import io.particle.android.sdk.cloud.ParticleCloudException;
+import io.particle.android.sdk.cloud.ParticleDevice;
 import io.particle.android.sdk.utils.Async;
 
 /**
  * Clase HiloActualizarDispositivos: implementa Runnable y corre un hilo en segundo plano que se encarga de verificar cada 5 segundos
- * las conexiones de los dispositivos fotones en la Particle Cloud, y llama un metodo del hilo principal que se encarga de
+ * las conexiones y nombres de los dispositivos en la Particle Cloud, y llama un metodo del hilo principal que se encarga de
  * actualizar la interfaz grafica
  * Created by LUIS ALFONSO on 21/12/2015.
  */
@@ -26,7 +27,7 @@ public class HiloActualizarDispositivos implements Runnable {
     private volatile ArrayList<String> nombre_dispositivos;
     private volatile boolean interrupted = false;            //Bandera que se utiliza para informar al hilo cuando debe terminar
     private volatile Semaphore semaforo = new Semaphore(1, true);   //Semaforo que ayuda con la sincronizacion entre hilos
-    private List<SparkDevice> dispositivos;
+    private List<ParticleDevice> dispositivos;
 
     /**
      * HiloActualizarDispositivos: constructor, recibe un objeto tipo activiy que representa el contexto actual de la app
@@ -40,24 +41,24 @@ public class HiloActualizarDispositivos implements Runnable {
 
     @Override
     public void run() {
-        //Mientras no sea interrumpido, cada 5 segundos pedira los dispositivos de Partgicle Cloud para analizar su conexion.
+        //Mientras no sea interrumpido, cada 5 segundos pedira los dispositivos de Particle Cloud para analizar su conexion.
         //Como el acceso a la Particle Cloud se hace tambien desde otro hilo, evitamos generar multiples hilos utilizando un
         //semaforo para que solo pueda existir un hilo Async y un hilo HiloActualizarDispositivos a la vez
         while(!interrupted) {
-            Async.executeAsync(SparkCloud.get(activity.getApplicationContext()), new Async.ApiWork<SparkCloud, List<SparkDevice>>() {
+            Async.executeAsync(Util.ParticleAPI.obtenerNubeParticle(), new Async.ApiWork<ParticleCloud, List<ParticleDevice>>() {
                 @Override
-                public List<SparkDevice> callApi(SparkCloud sparkCloud) throws SparkCloudException, IOException {
+                public List<ParticleDevice> callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
                     try {
                         semaforo.acquire();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    if (!interrupted) dispositivos = sparkCloud.getDevices();
+                    if (!interrupted) dispositivos = nube_particle.getDevices();
                     semaforo.release();
                     return dispositivos;
                 }
                 @Override
-                public void onSuccess(List<SparkDevice> dispositivos) {
+                public void onSuccess(List<ParticleDevice> dispositivos) {
                     conexion_dispositivos.clear();
                     nombre_dispositivos.clear();
                     for (int index = 0; index < dispositivos.size(); index++) {
@@ -68,7 +69,7 @@ public class HiloActualizarDispositivos implements Runnable {
                     dispositivos.clear();
                 }
                 @Override
-                public void onFailure(SparkCloudException exception) {
+                public void onFailure(ParticleCloudException exception) {
                     dispositivos.clear();
                 }
             });
@@ -80,7 +81,7 @@ public class HiloActualizarDispositivos implements Runnable {
             }
             semaforo.release();
         }
-        Log.i(activity.getString(R.string.app_name), "Se detuvo el hilo para actualizar la conexion");
+        Log.i(Util.TAG_HAD, "Se detuvo el hilo para actualizar la conexion");
     }
 
     /**

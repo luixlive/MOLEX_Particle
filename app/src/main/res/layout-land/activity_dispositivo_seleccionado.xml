@@ -9,7 +9,8 @@
         android:layout_height="match_parent"
         android:id="@+id/ivAvatarGrande"
         android:layout_weight="1"
-        android:contentDescription="@string/descripcion_avatar_grande" />
+        android:contentDescription="@string/descripcion_avatar_grande"
+        android:onClick="cambiarAvatar" />
 
     <RelativeLayout
         android:layout_width="match_parent"

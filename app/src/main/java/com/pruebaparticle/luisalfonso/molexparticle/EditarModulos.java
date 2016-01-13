@@ -18,13 +18,7 @@ import android.widget.ImageButton;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
-
-import io.particle.android.sdk.cloud.SparkCloud;
-import io.particle.android.sdk.cloud.SparkCloudException;
-import io.particle.android.sdk.utils.Async;
-import io.particle.android.sdk.utils.Toaster;
 
 /**
  * Clase EditarModulos: activity que le permite la usuario cambiar las imagenes y nombres de los modulos de un dispositivo seleccionado
@@ -33,12 +27,8 @@ import io.particle.android.sdk.utils.Toaster;
  */
 public class EditarModulos extends AppCompatActivity {
 
-    private final static String Tag = "SP EditarModulos";
-
     private final static double RELACION_WIDTH_IMAGEN = 1.0 / 6;    //Macros
-    private final static int MAX_TAM_IMAGEN = 2000000;
     private final static int REQUEST_CODE = 1216;
-    private final static int NUMERO_MODULOS = 3;
 
     private EditText nombre_dispositivo;        //Vistasa del layout
     private EditText nombre_modulo_1;
@@ -64,7 +54,7 @@ public class EditarModulos extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_editar_modulos);
 
-        for (int index = 0; index < NUMERO_MODULOS; index++) imagenes_modificadas[index] = false;
+        for (int index = 0; index < Util.NUMERO_MODULOS; index++) imagenes_modificadas[index] = false;
 
         calcularAnchoImagenes();
         recibirInformacionYActualizarVistas();
@@ -81,28 +71,28 @@ public class EditarModulos extends AppCompatActivity {
         boton_guardar.setBackgroundColor(ContextCompat.getColor(this, R.color.blanco));
         ((Button)boton_guardar).setTextColor(ContextCompat.getColor(this, R.color.colorPrimary));
 
-        String nombres_modulos_nuevos[] = new String[NUMERO_MODULOS];
+        String nombres_modulos_nuevos[] = new String[Util.NUMERO_MODULOS];
         boolean guardado_exitoso = false;
 
         if(almacenamiento_modulos_posible) {
-            for (int index = 0; index < NUMERO_MODULOS; index++) {
+            for (int index = 0; index < Util.NUMERO_MODULOS; index++) {
                 if (imagenes_modificadas[index]) {
                     File ruta_imagen = new File(directorio_modulos + File.separator + (index + 1) + getString(R.string.tipo_imagen));
                     FileOutputStream archivo;   //Guardamos las imagenes
                     try {
                         archivo = new FileOutputStream(ruta_imagen);
-                        if (imagenes[index].getByteCount() > MAX_TAM_IMAGEN) {
-                            imagenes[index].compress(Bitmap.CompressFormat.JPEG, (MAX_TAM_IMAGEN * 100 / imagenes[index].getByteCount()),
+                        if (imagenes[index].getByteCount() > Util.MAX_TAM_IMAGEN_MODULO) {
+                            imagenes[index].compress(Bitmap.CompressFormat.JPEG, (Util.MAX_TAM_IMAGEN_MODULO * 100 / imagenes[index].getByteCount()),
                                     archivo);
                         } else
                             imagenes[index].compress(Bitmap.CompressFormat.JPEG, 100, archivo);
                         archivo.close();
-                        Log.i(Tag, "Se cambio la imagen " + index + " exitosamente");
+                        Log.i(Util.TAG_EM, "Se cambio la imagen " + index + " exitosamente");
                     } catch (Exception e) {
-                        Log.e(Tag, "No se completo exitosamente el guardado de imagen" + index + "\n" + e.toString());
+                        Log.e(Util.TAG_EM, "No se completo exitosamente el guardado de imagen" + index + "\n" + e.toString());
                     }
                     finally {
-                        for (Bitmap imagen: imagenes) imagen.recycle();
+                        imagenes[index].recycle();
                     }
                 }
             }
@@ -110,23 +100,7 @@ public class EditarModulos extends AppCompatActivity {
             //Actualizamos el nombre del dispositivo en la nube de Particle si el usuario lo cambio
             String nombre_dispositivo_nuevo = nombre_dispositivo.getText().toString();
             if(!nombre_dispositivo_nuevo.equals(nombre_dispositivo_viejo)) {
-                Async.executeAsync(SparkCloud.get(this.getApplicationContext()), new Async.ApiWork<SparkCloud, Void>() {
-                    @Override
-                    public Void callApi(SparkCloud sparkCloud) throws SparkCloudException, IOException {
-                        sparkCloud.getDevice(id_dispositivo).setName(nombre_dispositivo.getText().toString());
-                        return null;
-                    }
-
-                    @Override
-                    public void onSuccess(Void aVoid) {
-                        Log.i(Tag, "Nombre de dispositivo actualizado en la nube de Particle");
-                    }
-
-                    @Override
-                    public void onFailure(SparkCloudException exception) {
-                        Log.e(Tag, exception.toString());
-                    }
-                });
+                Util.ParticleAPI.cambiarNombreDispositivo(id_dispositivo, nombre_dispositivo_nuevo);
             }
 
             File documento_con_nombres = new File(directorio_modulos, getString(R.string.nombre_archivo_nombres_modulos));
@@ -142,10 +116,10 @@ public class EditarModulos extends AppCompatActivity {
                 stream.close();
                 guardado_exitoso = true;
             } catch (Exception e) {
-                Log.e(Tag, e.toString());
-                Toaster.s(this, "No se pudieron guardar los cambios");
+                Log.e(Util.TAG_EM, e.toString());
+                Util.toast(this, getString(R.string.cambios_no_guardados));
             }
-        } else Toaster.s(this, "No se pudieron guardar los cambios");
+        } else Util.toast(this, getString(R.string.cambios_no_guardados));
 
         boton_guardar.setBackgroundColor(ContextCompat.getColor(this, R.color.colorPrimary));
         ((Button) boton_guardar).setTextColor(ContextCompat.getColor(this, R.color.blanco));
@@ -189,11 +163,11 @@ public class EditarModulos extends AppCompatActivity {
         nombre_modulo_3.setText(intent.getStringExtra("nombre_modulo_3"));
         directorio_modulos = intent.getStringExtra("directorio_modulos");
         almacenamiento_modulos_posible = intent.getBooleanExtra("almacenamiento_modulos_posible", false);
-        imagenes = new Bitmap[NUMERO_MODULOS];
+        imagenes = new Bitmap[Util.NUMERO_MODULOS];
 
         if (almacenamiento_modulos_posible) {       //Leemos los bitmaps
             File directorio_modulo;
-            for (int index = 0; index < NUMERO_MODULOS; index++) {
+            for (int index = 0; index < Util.NUMERO_MODULOS; index++) {
                 directorio_modulo = new File(directorio_modulos + File.separator + (index + 1) + getString(R.string.tipo_imagen));
                 if (directorio_modulo.exists())
                     imagenes[index] = Util.obtenerImagenReducida(directorio_modulo.getPath(), ancho_imagen, ancho_imagen);
@@ -272,7 +246,7 @@ public class EditarModulos extends AppCompatActivity {
                 imagenes[numero_boton_presionado] = imagen_nueva;
                 boton_presionado.setImageBitmap(escalarImagen(imagen_nueva));                     //Sustituimos el avatar
             } catch (Exception e) {
-                Log.e(Tag, e.toString());
+                Log.e(Util.TAG_EM, e.toString());
             }
         super.onActivityResult(requestCode, resultCode, data);
     }
