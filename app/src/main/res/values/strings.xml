@@ -21,9 +21,7 @@
     <string name="boton_editar_dispositivo">Editar</string>
     <string name="tv_nombre_modulo">Nombre: </string>
     <string name="tv_imagen_modulo">Imágen: </string>
-    <string name="hint_nombres_modulos_1">Módulo 1</string>
-    <string name="hint_nombres_modulos_2">Módulo 2</string>
-    <string name="hint_nombres_modulos_3">Módulo 3</string>
+    <string name="hint_nombre_modulo">Módulo</string>
     <string name="guardar_modulos">Guardar</string>
     <string name="sleccionar_imagen_modulo">Seleccionar</string>
     <string name="descripcion_imagen_modulos">Imagen actual de este módulo</string>
@@ -43,4 +41,9 @@
     <string name="mensaje_dialogo_agregar_dispositivo">Introduce el id del nuevo dispositivo:</string>
     <string name="dispositivo_agregado">Dispositivo añadido</string>
     <string name="configurar_dispositivo">Configurar Nuevo Dispositivo</string>
+    <string name="descripcion_agregar">Boton para agregar un nuevo dispositivo a la lista por medio de su id.</string>
+    <string name="dialogo_agregar_dispositivo_si">Agregar</string>
+    <string name="cerrar_sesion">Cerrar Sesión</string>
+    <string name="listo">Listo</string>
+    <string name="descripcion_encender_apagar_modulo">Encender/apagar modulos</string>
 </resources>

@@ -45,12 +45,12 @@
         android:layout_weight="1">
 
         <Button
-            style="@style/Tema.Boton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/log_in_btn"
             android:id="@+id/btIniciarSesion"
-            android:onClick="iniciarSesion" />
+            android:onClick="iniciarSesion"
+            android:layout_gravity="center_horizontal|top" />
     </FrameLayout>
 
 </LinearLayout>

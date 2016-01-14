@@ -9,7 +9,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:id="@+id/ivAvatarGrande"
-        android:layout_weight="4"
+        android:layout_weight="5"
         android:contentDescription="@string/descripcion_avatar_grande"
         android:onClick="cambiarAvatar" />
 
@@ -18,15 +18,30 @@
         android:layout_height="0dp"
         android:layout_weight="5">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceLarge"
-            android:text="Large Text"
-            android:id="@+id/tvNombreDispositivoGrande"
-            android:layout_alignParentTop="true"
-            android:layout_centerHorizontal="true"
-            android:textSize="30sp" />
+        <FrameLayout
+            android:id="@+id/flNombreDispositivo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceLarge"
+                android:text="Large Text"
+                android:id="@+id/tvNombreDispositivoGrande"
+                android:textSize="30sp"
+                android:layout_gravity="center_horizontal" />
+
+            <EditText
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?android:attr/textAppearanceLarge"
+                android:visibility="gone"
+                android:hint=""
+                android:id="@+id/etNombreDispositivoGrande"
+                android:textSize="30sp"
+                android:layout_gravity="center_horizontal" />
+        </FrameLayout>
 
         <TextView
             android:layout_width="wrap_content"
@@ -34,7 +49,7 @@
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:text="Large Text"
             android:id="@+id/tvConexionDispositivoGrande"
-            android:layout_below="@+id/tvNombreDispositivoGrande"
+            android:layout_below="@+id/flNombreDispositivo"
             android:layout_alignParentLeft="true"
             android:layout_alignParentStart="true"
             android:textSize="15sp"/>
@@ -46,23 +61,9 @@
             android:layout_alignParentLeft="true"
             android:layout_alignParentStart="true"
             android:layout_alignParentBottom="true"
-            android:layout_below="@+id/tvConexionDispositivoGrande" />
+            android:layout_below="@+id/tvConexionDispositivoGrande"
+            android:layout_marginTop="10dp" />
+
     </RelativeLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_horizontal">
-
-        <Button
-            style="@style/Tema.Boton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/boton_editar_dispositivo"
-            android:id="@+id/button"
-            android:layout_gravity="center_horizontal"
-            android:onClick="editarDispositivo" />
-    </LinearLayout>
 
 </LinearLayout>

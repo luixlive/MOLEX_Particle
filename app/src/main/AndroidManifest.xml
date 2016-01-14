@@ -22,13 +22,10 @@
         <activity android:name=".DispositivosActivity"
             android:launchMode="singleTop" />
         <activity android:name=".DispositivoSeleccionadoActivity"
+            android:windowSoftInputMode="adjustPan"
             android:configChanges="orientation"
             android:parentActivityName=".DispositivosActivity"
             android:launchMode="singleTop"
-            tools:ignore="UnusedAttribute" />
-        <activity android:name=".EditarModulos"
-            android:screenOrientation="portrait"
-            android:parentActivityName=".DispositivoSeleccionadoActivity"
             tools:ignore="UnusedAttribute" />
 
         <!--    LAS SIGUIENTES ACTIVITYS FUERON CREADAS POR PARTICLE Y SON PARTE DEL ANDROID DEVICE

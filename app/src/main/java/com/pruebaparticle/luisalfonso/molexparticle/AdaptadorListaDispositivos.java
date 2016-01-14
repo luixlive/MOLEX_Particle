@@ -41,11 +41,13 @@ public class AdaptadorListaDispositivos extends BaseAdapter {
 
     public void sombrear(boolean sombrear, int posicion){
         dispositivos_seleccionados.set(posicion, sombrear);
+        notifyDataSetChanged();
     }
 
     public void sombrearTodos(boolean sombrear){
         for (int index = 0; index < dispositivos_seleccionados.size(); index++)
             dispositivos_seleccionados.set(index, sombrear);
+        notifyDataSetChanged();
     }
 
     public void setNombresDispositivos(ArrayList<String> nombres){

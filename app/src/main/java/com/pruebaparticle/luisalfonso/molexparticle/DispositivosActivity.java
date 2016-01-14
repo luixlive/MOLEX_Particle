@@ -6,8 +6,8 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -50,8 +50,9 @@ public class DispositivosActivity extends AppCompatActivity {
     private File directorio_app;
     private int numero_dispositivos;
 
-    private AdaptadorListaDispositivos adaptador;
+    private volatile AdaptadorListaDispositivos adaptador;
     private boolean dispositivos_seleccionados[];
+    private boolean dispositivos_conectados_filtrados = false;
 
     private static HiloActualizarDispositivos hilo_actualizar_dispositivos;  //Runnable que correra sobre otro hilo para actualizar la conexion
 
@@ -90,18 +91,29 @@ public class DispositivosActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item){
         switch(item.getItemId()){
             case R.id.iFiltrar_dispositivos:
-                Util.vibrar(this);
-                if (adaptador.filtrarDispositivosPresionado())
+                if (dispositivos_conectados_filtrados = adaptador.filtrarDispositivosPresionado())
                     item.setIcon(R.mipmap.icono_quitar_filtrado);
                 else item.setIcon(R.mipmap.icono_filtrar);
                 return true;
             case R.id.iSetup_dispositivo:
-                Util.vibrar(this);
                 ParticleDeviceSetupLibrary.startDeviceSetup(this);
                 return true;
             case R.id.iAgregar_dispositivos:
-                Util.vibrar(this);
                 dialogoAgregarDispositivo();
+                return true;
+            case R.id.iCerrar_sesion:
+                AlertDialog.Builder dialogo_cerrar_sesion = Util.crearBuilderDialogo(this,  //para cerrar su sesion en Particle
+                        getString(R.string.dialogo_cerrar_sesion), getString(R.string.mensaje_dialogo_cerrar_sesion));
+                dialogo_cerrar_sesion.setPositiveButton(R.string.dialogo_cerrar_sesion_si, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Intent intent = new Intent(getApplicationContext(), IniciarSesionActivity.class);
+                        startActivity(intent);
+                        finish();
+                    }
+                });
+                AlertDialog alert_dialogo = dialogo_cerrar_sesion.create();
+                alert_dialogo.show();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -166,21 +178,47 @@ public class DispositivosActivity extends AppCompatActivity {
         dispositivos.setOnItemClickListener(new AdapterView.OnItemClickListener() {     //Si pulsan algun dispositivo en la lista
             @Override
             //(mientras que no sea el avatar)
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
+                adaptador.sombrear(true, position);
                 Util.vibrar(DispositivosActivity.this);
 
-                ((View) (view.getParent())).setBackgroundColor(ContextCompat.getColor(DispositivosActivity.this, R.color.gris_seleccion));
+                int posicion = position;
+                if (dispositivos_conectados_filtrados) {
+                    posicion = 0;
+                    int conteo_regresivo = position;
+                    for (boolean conectado : dispositivos_seleccionados) {
+                        if (conectado)
+                            conteo_regresivo--;
+                        if (conteo_regresivo == -1)
+                            break;
+                        posicion++;
+                    }
+                }
                 Intent intent = new Intent(getApplicationContext(), DispositivoSeleccionadoActivity.class);
-                intent.putExtra("nombre_dispositivo", nombres_dispositivos.get(position));
-                intent.putExtra("id_dispositivo", ids_dispositivos.get(position));
-                intent.putExtra("conexion_dispositivo", conexion_dispositivos.get(position));
+                intent.putExtra("nombre_dispositivo", nombres_dispositivos.get(posicion));
+                intent.putExtra("id_dispositivo", ids_dispositivos.get(posicion));
+                intent.putExtra("conexion_dispositivo", conexion_dispositivos.get(posicion));
                 intent.putExtra("directorio_app", directorio_app.toString());
                 intent.putExtra("directorio_avatares", directorio_avatares.toString());
                 intent.putExtra("almacenamiento_avatares_posible", almacenamiento_avatares_posible);
-                intent.putExtra("index_dispositivo", position);
+                intent.putExtra("index_dispositivo", posicion);
                 startActivityForResult(intent, REQUEST_CODE_DISPOSITIVO_SELECCIONADO);
-                Log.i(Util.TAG_DA, "Se pulso al dispositivo numero: " + position + ". Iniciando activity DispositivoSeleccionadoActivity");
-                ((View) (view.getParent())).setBackgroundColor(ContextCompat.getColor(DispositivosActivity.this, R.color.blanco));
+                Log.i(Util.TAG_DA, "Se pulso al dispositivo numero: " + posicion + ". Iniciando activity DispositivoSeleccionadoActivity");
+                new AsyncTask<Void, Void, Void>(){
+                    @Override
+                    protected Void doInBackground(Void... params) {
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        return null;
+                    }
+                    @Override
+                    protected void onPostExecute(Void aVoid){
+                        adaptador.sombrear(false, position);
+                    }
+                }.execute();
             }
         });
 
@@ -200,14 +238,12 @@ public class DispositivosActivity extends AppCompatActivity {
             public void onItemCheckedStateChanged(ActionMode mode, int position, long id, boolean checked) {
                 dispositivos_seleccionados[position] = checked;
                 adaptador.sombrear(checked, position);
-                adaptador.notifyDataSetChanged();
             }
 
             @Override
             public boolean onCreateActionMode(ActionMode mode, Menu menu) {
                 for (int index = 0; index < nombres_dispositivos.size(); index++)
                     adaptador.sombrear(dispositivos_seleccionados[index], index);
-                adaptador.notifyDataSetChanged();
 
                 MenuInflater creador_menu = mode.getMenuInflater();
                 creador_menu.inflate(R.menu.menu_context, menu);
@@ -238,7 +274,6 @@ public class DispositivosActivity extends AppCompatActivity {
             @Override
             public void onDestroyActionMode(ActionMode mode) {
                 adaptador.sombrearTodos(false);
-                adaptador.notifyDataSetChanged();
             }
         });
     }
@@ -290,10 +325,8 @@ public class DispositivosActivity extends AppCompatActivity {
     }
 
     private void dialogoAgregarDispositivo() {
-        AlertDialog.Builder dialogo_agregar_dispositivo = new AlertDialog.Builder(this);
-        dialogo_agregar_dispositivo.setTitle(R.string.dialogo_agregar_dispositivo);
-        dialogo_agregar_dispositivo.setCancelable(false);
-        dialogo_agregar_dispositivo.setMessage(R.string.mensaje_dialogo_agregar_dispositivo);
+        AlertDialog.Builder dialogo_agregar_dispositivo = Util.crearBuilderDialogo(this,
+                getString(R.string.dialogo_agregar_dispositivo), getString(R.string.mensaje_dialogo_agregar_dispositivo));
 
         //Creamos el cuadro de texto donde el usuario pondra el id de forma programatica
         final EditText cuadro_texto = new EditText(this);
@@ -304,19 +337,14 @@ public class DispositivosActivity extends AppCompatActivity {
         cuadro_texto.setLayoutParams(parametros);
         dialogo_agregar_dispositivo.setView(cuadro_texto);
 
-        dialogo_agregar_dispositivo.setPositiveButton(R.string.dialogo_cerrar_sesion_si, new DialogInterface.OnClickListener() {
+        dialogo_agregar_dispositivo.setPositiveButton(R.string.dialogo_agregar_dispositivo_si, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 String nuevo_id = cuadro_texto.getText().toString();
                 Util.ParticleAPI.agregarDispositivo(DispositivosActivity.this, nuevo_id);
             }
         });
-        dialogo_agregar_dispositivo.setNegativeButton(R.string.cancelar, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.cancel();
-            }
-        });
+
         AlertDialog alert_dialogo = dialogo_agregar_dispositivo.create();
         alert_dialogo.show();
     }
@@ -364,29 +392,5 @@ public class DispositivosActivity extends AppCompatActivity {
             DispositivoSeleccionadoActivity.actualizarDispositivoActual(conexion_dispositivos.get(DispositivoSeleccionadoActivity.getIndexActual()),
                     nombres_dispositivos.get(DispositivoSeleccionadoActivity.getIndexActual()) ,this);
         Log.v("Actualizacion Conexion", "Se han actualizado los estados de conexion de dispositivos en la UI");
-    }
-
-    @Override
-    public void onBackPressed() {       //Cuando el usuario presione back, se inicia la activity de inicio de sesion y se destruye esta
-        AlertDialog.Builder dialogo_cerrar_sesion = new AlertDialog.Builder(this);        //para cerrar su sesion en Particle
-        dialogo_cerrar_sesion.setTitle(R.string.dialogo_cerrar_sesion);
-        dialogo_cerrar_sesion.setCancelable(false);
-        dialogo_cerrar_sesion.setMessage(R.string.mensaje_dialogo_cerrar_sesion);
-        dialogo_cerrar_sesion.setPositiveButton(R.string.dialogo_cerrar_sesion_si, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                Intent intent = new Intent(getApplicationContext(), IniciarSesionActivity.class);
-                startActivity(intent);
-                finish();
-            }
-        });
-        dialogo_cerrar_sesion.setNegativeButton(R.string.cancelar, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.cancel();
-            }
-        });
-        AlertDialog alert_dialogo = dialogo_cerrar_sesion.create();
-        alert_dialogo.show();
     }
 }

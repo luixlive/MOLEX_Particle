@@ -1,7 +1,7 @@
 /**
  * Autor: Luis Alfonso Chávez Abbadie
  * 20/12/2015
- * Proyecto SmartPower, MOLEX
+ * Proyecto SmartPower
  */
 package com.pruebaparticle.luisalfonso.molexparticle;
 

@@ -13,9 +13,10 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -33,10 +34,15 @@ import java.util.Arrays;
 public class DispositivoSeleccionadoActivity extends AppCompatActivity {
 
     private final static int REQUEST_CODE_EDITAR_AVATAR = 2913;
-    private final static int REQUEST_CODE_EDITAR_MODULOS = 2912;
+    private final static int REQUEST_CODE_EDITAR_MODULO = 2912;
     private final static int NUMERO_MODULOS = 3;
     private final static double RELACION_WIDTH_IMAGEN = 1 / 6.0;
     private final static double RELACION_WIDTH_AVATAR = 1 / 2.0;
+
+    private Menu menu;
+    private boolean menu_cambio_nombre_modulo = false;
+    private boolean menu_cambio_nombre_dispositivo = false;
+    private int posicion_modulo_imagen_cambiada;
 
     private String id_dispositivo;              //Informacion del dispositivo enviada por la activity DispositivosActivity
     private String nombre_dispositivo;
@@ -73,6 +79,13 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
         crearListaModulos();
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu){
+        this.menu = menu;
+        getMenuInflater().inflate(R.menu.menu_dispositivo, menu);
+        return true;
+    }
+
     /**
      * cambiarAvatar: se llama al pulsar el avatar, lanza un dialogo que le permite al usuario elegir si desea cambiar su
      * avatar
@@ -80,10 +93,8 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
      */
     public void cambiarAvatar(View imagen){
         Util.vibrar(this);
-        AlertDialog.Builder dialogo = new AlertDialog.Builder(this);        //Creamos un dialogo con la pregunta
-        dialogo.setTitle(R.string.dialogo_cambiar_imagen);
-        dialogo.setCancelable(false);
-        dialogo.setMessage(R.string.mensaje_dialogo_cambiar_imagen);
+        AlertDialog.Builder dialogo = Util.crearBuilderDialogo(this, getString(R.string.dialogo_cambiar_imagen),
+                getString(R.string.mensaje_dialogo_cambiar_imagen));
         dialogo.setPositiveButton(R.string.cambiar_imagen_si, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -94,39 +105,8 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
                 startActivityForResult(intent, REQUEST_CODE_EDITAR_AVATAR);
             }
         });
-        dialogo.setNegativeButton(R.string.cancelar, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.cancel();
-            }
-        });
         AlertDialog alert_dialogo = dialogo.create();
         alert_dialogo.show();
-    }
-
-    /**
-     * editarDispositivo: se llama cuando el usuario pulsa editar, invoca la activity EditarModulos y se le pasa la informacion
-     * que ya se leyo del almacenamiento
-     * @param boton: vista del boton editar
-     */
-    public void editarDispositivo(View boton){
-        Util.vibrar(this);
-        boton.setBackgroundColor(ContextCompat.getColor(this, R.color.blanco));
-        ((Button)boton).setTextColor(ContextCompat.getColor(this, R.color.colorPrimary));
-
-        Intent intent = new Intent(this, EditarModulos.class);
-        intent.putExtra("nombre_dispositivo", nombre_dispositivo);
-        intent.putExtra("id_dispositivo", id_dispositivo);
-        intent.putExtra("nombre_modulo_1", nombre_modulos[0]);
-        intent.putExtra("nombre_modulo_2", nombre_modulos[1]);
-        intent.putExtra("nombre_modulo_3", nombre_modulos[2]);
-        intent.putExtra("directorio_modulos", directorio_modulos);
-        intent.putExtra("almacenamiento_modulos_posible", almacenamiento_modulos_posible);
-        intent.putExtra("configuracion_inicial", false);
-        startActivityForResult(intent, REQUEST_CODE_EDITAR_MODULOS);
-
-        boton.setBackgroundColor(ContextCompat.getColor(this, R.color.colorPrimary));
-        ((Button) boton).setTextColor(ContextCompat.getColor(this, R.color.blanco));
     }
 
     /**
@@ -151,6 +131,23 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
     private void obtenerVistas() {
         tv_conexion_dispositivo = (TextView)findViewById(R.id.tvConexionDispositivoGrande);
         tv_nombre_dispositivo = (TextView)findViewById(R.id.tvNombreDispositivoGrande);
+        tv_nombre_dispositivo.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                if (menu_cambio_nombre_modulo) {
+                    menu_cambio_nombre_modulo = false;
+                    adaptador.cambioNombreListo();
+                }
+                String hint = ((TextView) v).getText().toString();
+                EditText etNombre_dispositivo = (EditText) findViewById(R.id.etNombreDispositivoGrande);
+                etNombre_dispositivo.setHint(hint);
+                v.setVisibility(View.GONE);
+                etNombre_dispositivo.setVisibility(View.VISIBLE);
+                mostrarItemListo();
+                menu_cambio_nombre_dispositivo = true;
+                return true;
+            }
+        });
         lv_modulos = (ListView)findViewById(R.id.lvModulos);
         iv_avatar = (ImageView)findViewById(R.id.ivAvatarGrande);
     }
@@ -185,18 +182,6 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
      */
     private void crearListaModulos() {
         if (almacenamiento_modulos_posible) {
-            if (new File(directorio_modulos).list().length == 0) {
-                Intent intent = new Intent(this, EditarModulos.class);
-                intent.putExtra("nombre_dispositivo", nombre_dispositivo);
-                intent.putExtra("nombre_modulo_1", getString(R.string.hint_nombres_modulos_1));
-                intent.putExtra("nombre_modulo_2", getString(R.string.hint_nombres_modulos_2));
-                intent.putExtra("nombre_modulo_3", getString(R.string.hint_nombres_modulos_3));
-                intent.putExtra("directorio_modulos", directorio_modulos);
-                intent.putExtra("almacenamiento_modulos_posible", almacenamiento_modulos_posible);
-                intent.putExtra("configuracion_inicial", true);
-                startActivityForResult(intent, REQUEST_CODE_EDITAR_MODULOS);
-            }
-
             File archivo_nombres_modulos = new File(directorio_modulos + File.separator + getString(R.string.nombre_archivo_nombres_modulos));
             String texto_archivo_nombres[] = new String[NUMERO_MODULOS];
             FileInputStream stream;
@@ -281,12 +266,48 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data){
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_EDITAR_MODULOS){
+        if (requestCode == REQUEST_CODE_EDITAR_MODULO){
             if (resultCode == RESULT_OK){
-                String nombres_modulos_nuevos[] = data.getStringArrayExtra("nuevos_nombres");
-                adaptador.setNombresModulos(nombres_modulos_nuevos);
-                adaptador.setImagenesModulos(obtenerImagenesModulos());
-                adaptador.notifyDataSetChanged();
+                Bitmap imagen_nueva = null;
+                try{
+                    InputStream stream = getContentResolver().openInputStream(data.getData());
+                    imagen_nueva = BitmapFactory.decodeStream(stream, new Rect(0, 0, ancho_imagen, ancho_imagen), new BitmapFactory.Options());
+                    if (stream != null) stream.close();
+                } catch (Exception e) {
+                    Log.e(Util.TAG_DSA, "No se puede abrir la imagen");
+                    e.printStackTrace();
+                }
+                new AsyncTask<Bitmap, Void, Boolean>(){
+
+                    @Override
+                    protected Boolean doInBackground(Bitmap... imagenes) {
+                        File ruta_imagen = new File(directorio_modulos + File.separator + (posicion_modulo_imagen_cambiada + 1) +
+                                getString(R.string.tipo_imagen));
+                        FileOutputStream archivo;
+                        try {
+                            archivo = new FileOutputStream(ruta_imagen);
+                            if (imagenes[0].getByteCount() > Util.MAX_TAM_IMAGEN_MODULO) {
+                                imagenes[0].compress(Bitmap.CompressFormat.JPEG, (Util.MAX_TAM_IMAGEN_MODULO * 100 /
+                                        (imagenes[0].getByteCount())), archivo);
+                            } else imagenes[0].compress(Bitmap.CompressFormat.JPEG, 100, archivo);
+                            archivo.close();
+                            Log.i(Util.TAG_DSA, "Se cambio la imagen de modulo exitosamente");
+                        } catch(Exception e){
+                            Log.e(Util.TAG_DSA, "No se completo exitosamente el guardado de imagen");
+                            return false;
+                        }
+                        return true;
+                    }
+                    @Override
+                    protected  void onPostExecute(Boolean resultado){
+                        if (resultado){
+                            adaptador.setImagenesModulos(obtenerImagenesModulos());
+                            adaptador.notifyDataSetChanged();
+                        } else{
+                            Util.toast(DispositivoSeleccionadoActivity.this, DispositivoSeleccionadoActivity.this.getString(R.string.cambios_no_guardados));
+                        }
+                    }
+                }.execute(imagen_nueva);
             }
         } else if (requestCode == REQUEST_CODE_EDITAR_AVATAR){
             if (resultCode == RESULT_OK) {
@@ -346,19 +367,108 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item){
-        if (item.getItemId() == android.R.id.home){
-            onBackPressed();
+        switch(item.getItemId()){
+            case android.R.id.home:
+                onBackPressed();
+                break;
+            case R.id.iListo:
+                (menu.findItem(R.id.iListo)).setVisible(false);
+                if (menu_cambio_nombre_modulo) {
+                    menu_cambio_nombre_modulo = false;
+                    adaptador.cambioNombreListo();
+                    guardarNombresModulos();
+                } else{
+                    cambioNombreDispositivoListo();
+                }
+                break;
+            default:
+                super.onOptionsItemSelected(item);
         }
         return true;
     }
 
+    private void guardarNombresModulos(){
+        if (almacenamiento_modulos_posible) {
+            File documento_con_nombres = new File(directorio_modulos, getString(R.string.nombre_archivo_nombres_modulos));
+            FileOutputStream stream;        //Guardamos un txt con los nombres de los modulos en el orden correcto para facilitar la lectura
+            String nombres_modulos_nuevos[] = adaptador.getNombresModulos();
+            try {
+                stream = new FileOutputStream(documento_con_nombres);
+                stream.write((nombres_modulos_nuevos[0] + "\n").getBytes());
+                stream.write((nombres_modulos_nuevos[1] + "\n").getBytes());
+                stream.write((nombres_modulos_nuevos[2]).getBytes());
+                stream.close();
+            } catch (Exception e) {
+                Log.e(Util.TAG_EM, e.toString());
+                Util.toast(this, getString(R.string.cambios_no_guardados));
+            }
+        }
+    }
+
+    public void menuCambioNombreModulo(){
+        if (menu_cambio_nombre_dispositivo){
+            cambioNombreDispositivoListo();
+        }
+        menu_cambio_nombre_modulo = true;
+        mostrarItemListo();
+    }
+
+    private void mostrarItemListo() {
+        MenuItem item_listo = menu.findItem(R.id.iListo);
+        item_listo.setVisible(true);
+    }
+
+    private void esconderItemListo() {
+        (menu.findItem(R.id.iListo)).setVisible(false);
+    }
+
+    private void cambioNombreDispositivoListo() {
+        menu_cambio_nombre_dispositivo = false;
+        EditText etNombre_dispositivo = (EditText)findViewById(R.id.etNombreDispositivoGrande);
+        String nuevo_nombre = etNombre_dispositivo.getText().toString();
+        if (nuevo_nombre.isEmpty()) {
+            cambioNombreDispositivoCancelado();
+            return;
+        }
+        Util.ParticleAPI.cambiarNombreDispositivo(id_dispositivo, nuevo_nombre);
+        tv_nombre_dispositivo.setText(nuevo_nombre);
+        etNombre_dispositivo.setVisibility(View.GONE);
+        tv_nombre_dispositivo.setVisibility(View.VISIBLE);
+    }
+
+    private void cambioNombreDispositivoCancelado() {
+        menu_cambio_nombre_dispositivo = false;
+        EditText etNombre_dispositivo = (EditText)findViewById(R.id.etNombreDispositivoGrande);
+        etNombre_dispositivo.setText(null);
+        etNombre_dispositivo.setVisibility(View.GONE);
+        tv_nombre_dispositivo.setVisibility(View.VISIBLE);
+    }
+
+    public void cambioImagenModulo(int numero_modulo) {
+        posicion_modulo_imagen_cambiada = numero_modulo;
+        Intent intent = new Intent();
+        intent.setType("image/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(intent, REQUEST_CODE_EDITAR_MODULO);
+    }
+
     @Override
     public void onBackPressed() {
-        index_dispositivo = null;
-        if (avatar_cambiado) {
-            setResult(RESULT_OK);
-            avatar_cambiado = false;
-        } else setResult(RESULT_CANCELED);
-        super.onBackPressed();
+        if (menu_cambio_nombre_modulo) {
+            esconderItemListo();
+            menu_cambio_nombre_modulo = false;
+            adaptador.cambioNombreCancelado();
+        } else if (menu_cambio_nombre_dispositivo) {
+            esconderItemListo();
+            cambioNombreDispositivoCancelado();
+        } else {
+            index_dispositivo = null;
+            if (avatar_cambiado) {
+                setResult(RESULT_OK);
+                avatar_cambiado = false;
+            } else setResult(RESULT_CANCELED);
+            super.onBackPressed();
+        }
     }
 }

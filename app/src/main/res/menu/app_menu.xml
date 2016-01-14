@@ -17,4 +17,8 @@
         android:title="@string/agregar_dispositivos"
         app:showAsAction="ifRoom"/>
 
+    <item android:id="@+id/iCerrar_sesion"
+        android:title="@string/cerrar_sesion"
+        app:showAsAction="never" />
+
 </menu>

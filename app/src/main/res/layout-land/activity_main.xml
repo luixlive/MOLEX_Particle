@@ -51,8 +51,7 @@
             android:id="@+id/btIniciarSesion"
             android:layout_gravity="center_horizontal"
             android:onClick="iniciarSesion"
-            android:background="@color/colorPrimary"
-            android:textColor="@color/blanco" />
+            android:background="@color/colorPrimary" />
     </FrameLayout>
 
 </LinearLayout>

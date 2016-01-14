@@ -1,7 +1,9 @@
 package com.pruebaparticle.luisalfonso.molexparticle;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -13,7 +15,6 @@ import android.os.Environment;
 import android.os.Vibrator;
 import android.support.annotation.NonNull;
 import android.util.Log;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
@@ -43,7 +44,7 @@ public class Util {
     public static final String TAG_ISA = "SP IniciarSesionA";
 
     //Constantes utilizadas frecuentemente en las clases
-    public static final int TIEMPO_VIBRACION = 60;
+    public static final int TIEMPO_VIBRACION = 35;
     public static final int MAX_TAM_IMAGEN_AVATAR = 6000000;      //Maximo tamanio en bits que puede cubrir un avatar
     public final static int MAX_TAM_IMAGEN_MODULO = 2000000;      //Maximo tamanio en bits de la imagen de un modulo
     public final static int NUMERO_MODULOS = 3;                   //Numero de modulos por cada dispositivo SmartPower
@@ -180,6 +181,20 @@ public class Util {
         Toast.makeText(activity.getApplicationContext(), mensaje, Toast.LENGTH_SHORT).show();
     }
 
+    public static AlertDialog.Builder crearBuilderDialogo(Activity activity, String titulo, String mensaje){
+        AlertDialog.Builder dialogo = new AlertDialog.Builder(activity);
+        dialogo.setTitle(titulo);
+        dialogo.setCancelable(true);
+        dialogo.setMessage(mensaje);
+        dialogo.setNegativeButton(R.string.cancelar, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+        return dialogo;
+    }
+
     /**
      * clase ParticleAPI: Clase auxiliar para hacer lo relacionado con acceder a la nube de Particle
      */
@@ -292,8 +307,7 @@ public class Util {
         }
 
         public static void leerVariableEstadoModulo(final AdaptadorListaModulos adaptador,
-                                                    final Integer numero_modulo, final String id_dispositivo,
-                                                    final TextView nombre_modulo) {
+                                                    final Integer numero_modulo, final String id_dispositivo) {
             Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Integer>() {
                 @Override
                 public Integer callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
@@ -319,17 +333,17 @@ public class Util {
                 @Override
                 public void onSuccess(Integer estado) {
                     if (estado == ENCENDIDO)
-                        adaptador.notificarEstadoEncendido(nombre_modulo);
+                        adaptador.notificarEstadoEncendido(numero_modulo);
                     else if (estado == APAGADO)
-                        adaptador.notificarEstadoApagado(nombre_modulo);
+                        adaptador.notificarEstadoApagado(numero_modulo);
                     else if (estado == ERROR){
-                        adaptador.notificarEstadoError(nombre_modulo);
+                        adaptador.notificarEstadoError(numero_modulo);
                     }
                 }
 
                 @Override
                 public void onFailure(ParticleCloudException exception) {
-                    adaptador.notificarEstadoError(nombre_modulo);
+                    adaptador.notificarEstadoError(numero_modulo);
                     Log.e("SP AdapadosListaM", exception.toString());
                 }
             });
@@ -382,6 +396,58 @@ public class Util {
                 @Override
                 public void onFailure(ParticleCloudException e) {
                     Log.e(Util.TAG_DA, "No se puede agregar el dispositovo: " + e.getBestMessage());
+                }
+            });
+        }
+
+        public static void encenderModulo(final AdaptadorListaModulos adaptador, final String id, final int position) {
+            Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
+                public Void callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
+                    ParticleDevice dispositivo = nube_particle.getDevice(id);
+                    List<String> parametro = new ArrayList<>();
+                    parametro.add(String.valueOf(position));
+                    try {
+                        dispositivo.callFunction("encender_modulo", parametro);
+                    } catch (ParticleDevice.FunctionDoesNotExistException e) {
+                        throw new ParticleCloudException(e);
+                    }
+                    return null;
+                }
+
+                @Override
+                public void onSuccess(Void aVoid) {
+                    adaptador.notificarEstadoEncendido(position);
+                }
+
+                @Override
+                public void onFailure(ParticleCloudException e) {
+                    Log.e(Util.TAG_DA, "No se puede encender el modulo: " + e.getBestMessage());
+                }
+            });
+        }
+
+        public static void apagarModulo(final AdaptadorListaModulos adaptador, final String id, final int position) {
+            Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
+                public Void callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
+                    ParticleDevice dispositivo = nube_particle.getDevice(id);
+                    List<String> parametro = new ArrayList<>();
+                    parametro.add(String.valueOf(position));
+                    try {
+                        dispositivo.callFunction("apagar_modulo", parametro);
+                    } catch (ParticleDevice.FunctionDoesNotExistException e) {
+                        throw new ParticleCloudException(e);
+                    }
+                    return null;
+                }
+
+                @Override
+                public void onSuccess(Void aVoid) {
+                    adaptador.notificarEstadoApagado(position);
+                }
+
+                @Override
+                public void onFailure(ParticleCloudException e) {
+                    Log.e(Util.TAG_DA, "No se puede apagar el modulo: " + e.getBestMessage());
                 }
             });
         }
