@@ -39,23 +39,40 @@ public class AdaptadorListaDispositivos extends BaseAdapter {
         inflater = (LayoutInflater)activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
     }
 
+    /**
+     * sombrear: pone o quita un fondo gris al item seleccionado
+     * @param sombrear: boolean que indica si hay que sombrear (true) o quitar sombreado (false)
+     * @param posicion: posicion en la lista de dispositivos
+     */
     public void sombrear(boolean sombrear, int posicion){
         dispositivos_seleccionados.set(posicion, sombrear);
         notifyDataSetChanged();
     }
 
+    /**
+     * sombrearTodos: sombrea o quita el sombreado a todos los dispositivos
+     * @param sombrear: true para sombrear y false para quitar sombreado
+     */
     public void sombrearTodos(boolean sombrear){
         for (int index = 0; index < dispositivos_seleccionados.size(); index++)
             dispositivos_seleccionados.set(index, sombrear);
         notifyDataSetChanged();
     }
 
+    /**
+     * setNombresDispositivos: cambia el nombre de los dispositivos
+     * @param nombres: lista que contiene los nuevos nombres
+     */
     public void setNombresDispositivos(ArrayList<String> nombres){
         nombres_dispositivos.clear();
         for (int index = 0; index < nombres.size(); index++)
             nombres_dispositivos.add(nombres.get(index));
     }
 
+    /**
+     * setConexionesDispositivos: cambia el estado de las conexiones de los dispositivos
+     * @param conexiones: lista que contiene los nuevos estados de conexion
+     */
     public void setConexionesDispositivos(ArrayList<Boolean> conexiones){
         dispositivos_conectados.clear();
         for (int index = 0; index < conexiones.size(); index++)
@@ -64,8 +81,8 @@ public class AdaptadorListaDispositivos extends BaseAdapter {
 
     @Override
     public int getCount() {
-        if (filtrar_dispositivos_conectados){
-            int count = 0;
+        if (filtrar_dispositivos_conectados){       //Si se filtran los dispositivos conectados (se pulsa el item filtrar del menu)
+            int count = 0;                          //solo se cuentan aquellos dispositivos que se encuentrn conectados
             for (boolean conectado: dispositivos_conectados)
                 if (conectado) count++;
             return count;
@@ -92,18 +109,7 @@ public class AdaptadorListaDispositivos extends BaseAdapter {
         TextView tv_conexiones = (TextView) gv.findViewById(R.id.tvOnline);
         ImageView avatar = (ImageView)gv.findViewById(R.id.ivAvatar);
 
-        int posicion = position;
-        if (filtrar_dispositivos_conectados){
-            posicion = 0;
-            int conteo_regresivo = position;
-            for (boolean conectado: dispositivos_conectados){
-                if (conectado)
-                    conteo_regresivo--;
-                if (conteo_regresivo == -1)
-                    break;
-                posicion++;
-            }
-        }
+        int posicion = obtenerPosicionReal(position);
 
         name.setText(nombres_dispositivos.get(posicion));
         if (dispositivos_conectados.get(posicion))
@@ -120,10 +126,42 @@ public class AdaptadorListaDispositivos extends BaseAdapter {
         return gv;
     }
 
+    /**
+     * obtenerPosicionReal: devuelve la posicion real del dispositivo en la lista, ya que la posicion que regresa automaticamente
+     * el metodo es sobre la lista mostrada, y no sobre la lista completa de dispositivos. Si los dispositivos estan filtrados
+     * la lista mostrada contiene solo los dispositivos conectados, con esta funcion se obtiene la posicion real en la lista completa
+     * @param position: posicion en la lista mostrada
+     * @return: int con la posicion en la lista completa
+     */
+    private int obtenerPosicionReal(int position) {
+        int posicion = position;
+        if (filtrar_dispositivos_conectados){
+            posicion = 0;
+            int conteo_regresivo = position;
+            for (boolean conectado: dispositivos_conectados){
+                if (conectado)
+                    conteo_regresivo--;
+                if (conteo_regresivo == -1)
+                    break;
+                posicion++;
+            }
+        }
+        return posicion;
+    }
+
+    /**
+     * setAvatares: cambia los avatares de los dispositivos en la lista
+     * @param avatares: arreglo con los nuevos avatares
+     */
     public void setAvatares(Bitmap[] avatares) {
         System.arraycopy(avatares, 0, avatares_dispositivos, 0, avatares_dispositivos.length);
     }
 
+    /**
+     * filtrarDispositivosPresionado: se debe llamar para informar al adaptador que los dispositivos estan filtrados para
+     * mostrar solo los que estan conectados
+     * @return boolean con el nuevo estado del filtrado (true si se activo el filtrado, false si se desactivo)
+     */
     public boolean filtrarDispositivosPresionado() {
         filtrar_dispositivos_conectados = !filtrar_dispositivos_conectados;
         this.notifyDataSetChanged();

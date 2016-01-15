@@ -39,9 +39,6 @@ import static android.text.InputType.TYPE_CLASS_NUMBER;
  */
 public class DispositivosActivity extends AppCompatActivity {
 
-    private static final int REQUEST_CODE_DISPOSITIVO_SELECCIONADO = 1214;
-    private static final double RELACION_WIDTH_AVATARES = 1.0 / 3;  //Relacion de los avatares respecto a la pantalla del smartphone
-
     private ArrayList<String> nombres_dispositivos; //Informacion de los dispositivos y del almacenamiento en el smartphone del usuario
     private ArrayList<String> ids_dispositivos;
     private ArrayList<Boolean> conexion_dispositivos;
@@ -64,18 +61,8 @@ public class DispositivosActivity extends AppCompatActivity {
         setContentView(R.layout.activity_dispositivos);
 
         capturarInformacionSesion();
-        prepararAvatares();
-
-        //Si la activity se reinicia (por ejemplo si el usuario gira su celular) se recuperan los dispositivos que tenia
-        //seleccionados (si es que tenia alguno)
-        if (savedInstanceState != null){
-            dispositivos_seleccionados = savedInstanceState.getBooleanArray("DispositivosSeleccionado");
-        } else{
-            dispositivos_seleccionados = new boolean[numero_dispositivos];
-            for (int index = 0; index < numero_dispositivos; index++)
-                dispositivos_seleccionados[index] = false;
-        }
-
+        calcularAnchoAvatares();
+        recuperarInformacionDelBundle(savedInstanceState);
         crearListaDispositivos();
         iniciarEventoBotonHome();
         iniciarHiloActualizacionConexiones();
@@ -83,13 +70,14 @@ public class DispositivosActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu){
-        getMenuInflater().inflate(R.menu.app_menu, menu);
+        getMenuInflater().inflate(R.menu.app_menu, menu);       //Creamos el menu superior
         return true;
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item){
-        switch(item.getItemId()){
+    public boolean onOptionsItemSelected(MenuItem item) {
+        //Si el usuario pulsa un item del menu, realizamos la accion correspondiente
+        switch (item.getItemId()) {
             case R.id.iFiltrar_dispositivos:
                 if (dispositivos_conectados_filtrados = adaptador.filtrarDispositivosPresionado())
                     item.setIcon(R.mipmap.icono_quitar_filtrado);
@@ -102,18 +90,7 @@ public class DispositivosActivity extends AppCompatActivity {
                 dialogoAgregarDispositivo();
                 return true;
             case R.id.iCerrar_sesion:
-                AlertDialog.Builder dialogo_cerrar_sesion = Util.crearBuilderDialogo(this,  //para cerrar su sesion en Particle
-                        getString(R.string.dialogo_cerrar_sesion), getString(R.string.mensaje_dialogo_cerrar_sesion));
-                dialogo_cerrar_sesion.setPositiveButton(R.string.dialogo_cerrar_sesion_si, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Intent intent = new Intent(getApplicationContext(), IniciarSesionActivity.class);
-                        startActivity(intent);
-                        finish();
-                    }
-                });
-                AlertDialog alert_dialogo = dialogo_cerrar_sesion.create();
-                alert_dialogo.show();
+                crearDialogoCerrarSesion();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -157,12 +134,27 @@ public class DispositivosActivity extends AppCompatActivity {
     }
 
     /**
-     * prepararAvatares: calcula el ancho adecuado de los avatares dependiendo del dispositivo smartphone que se utilice
+     * calcularAnchoAvatares: calcula el ancho adecuado de los avatares dependiendo del dispositivo smartphone que se utilice
      */
-    private void prepararAvatares() {
+    private void calcularAnchoAvatares() {
         DisplayMetrics metrics = new DisplayMetrics();                  //Obtenemos las medidas de la pantalla del celular
         getWindowManager().getDefaultDisplay().getMetrics(metrics);     //para ajustar lo ancho de las imagenes
-        ancho_avatar = (int)(metrics.widthPixels * RELACION_WIDTH_AVATARES);
+        ancho_avatar = (int)(metrics.widthPixels * Util.RELACION_WIDTH_AVATARES);
+    }
+
+    /**
+     * recuperarInformacionDelBundle: recuperamos la informacion importante que el usuario tenia en pantalla antes
+     * de que la activity se pausara
+     * @param estado: bundle del estado de la activity que se quiere recuperar (dispositivos que habia seleccionado)
+     */
+    private void recuperarInformacionDelBundle(Bundle estado) {
+        if (estado != null){
+            dispositivos_seleccionados = estado.getBooleanArray("DispositivosSeleccionado");
+        } else{
+            dispositivos_seleccionados = new boolean[numero_dispositivos];
+            for (int index = 0; index < numero_dispositivos; index++)
+                dispositivos_seleccionados[index] = false;
+        }
     }
 
     /**
@@ -178,47 +170,12 @@ public class DispositivosActivity extends AppCompatActivity {
         dispositivos.setOnItemClickListener(new AdapterView.OnItemClickListener() {     //Si pulsan algun dispositivo en la lista
             @Override
             //(mientras que no sea el avatar)
-            public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
+            public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {    //Si se pulsa un dispositivo
                 adaptador.sombrear(true, position);
                 Util.vibrar(DispositivosActivity.this);
 
-                int posicion = position;
-                if (dispositivos_conectados_filtrados) {
-                    posicion = 0;
-                    int conteo_regresivo = position;
-                    for (boolean conectado : dispositivos_seleccionados) {
-                        if (conectado)
-                            conteo_regresivo--;
-                        if (conteo_regresivo == -1)
-                            break;
-                        posicion++;
-                    }
-                }
-                Intent intent = new Intent(getApplicationContext(), DispositivoSeleccionadoActivity.class);
-                intent.putExtra("nombre_dispositivo", nombres_dispositivos.get(posicion));
-                intent.putExtra("id_dispositivo", ids_dispositivos.get(posicion));
-                intent.putExtra("conexion_dispositivo", conexion_dispositivos.get(posicion));
-                intent.putExtra("directorio_app", directorio_app.toString());
-                intent.putExtra("directorio_avatares", directorio_avatares.toString());
-                intent.putExtra("almacenamiento_avatares_posible", almacenamiento_avatares_posible);
-                intent.putExtra("index_dispositivo", posicion);
-                startActivityForResult(intent, REQUEST_CODE_DISPOSITIVO_SELECCIONADO);
-                Log.i(Util.TAG_DA, "Se pulso al dispositivo numero: " + posicion + ". Iniciando activity DispositivoSeleccionadoActivity");
-                new AsyncTask<Void, Void, Void>(){
-                    @Override
-                    protected Void doInBackground(Void... params) {
-                        try {
-                            Thread.sleep(500);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        return null;
-                    }
-                    @Override
-                    protected void onPostExecute(Void aVoid){
-                        adaptador.sombrear(false, position);
-                    }
-                }.execute();
+                int posicion_real = obtenerPosicionRealDispositivo(position);
+                iniciarActivityDispositivoSeleccionado(posicion_real);
             }
         });
 
@@ -257,18 +214,21 @@ public class DispositivosActivity extends AppCompatActivity {
 
             @Override
             public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-                if (item.getItemId() == R.id.borrar) {
-                    ArrayList<String> ids_dispositivos_seleccionados = new ArrayList<>();
-                    for (int index = 0; index < numero_dispositivos; index++) {
-                        if (dispositivos_seleccionados[index]) {
-                            ids_dispositivos_seleccionados.add(ids_dispositivos.get(index));
+                switch (item.getItemId()) {
+                    case R.id.borrar:
+                        ArrayList<String> ids_dispositivos_seleccionados = new ArrayList<>();
+                        for (int index = 0; index < numero_dispositivos; index++) {
+                            if (dispositivos_seleccionados[index]) {
+                                ids_dispositivos_seleccionados.add(ids_dispositivos.get(index));
+                            }
                         }
-                    }
-
-                    Util.ParticleAPI.eliminarDispositivo(DispositivosActivity.this, ids_dispositivos_seleccionados);
-                    return true;
+                        Util.ParticleAPI.eliminarDispositivos(DispositivosActivity.this, ids_dispositivos_seleccionados);
+                        break;
+                    case android.R.id.home:
+                        for (int index = 0; index < numero_dispositivos; index++)
+                            dispositivos_seleccionados[index] = false;
                 }
-                return false;
+                return true;
             }
 
             @Override
@@ -283,6 +243,7 @@ public class DispositivosActivity extends AppCompatActivity {
      */
     private void iniciarEventoBotonHome() {
         final ImageButton boton_home = (ImageButton) findViewById(R.id.ibHome);
+
         boton_home.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -317,18 +278,40 @@ public class DispositivosActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_CODE_DISPOSITIVO_SELECCIONADO && resultCode == Activity.RESULT_OK) {
-            adaptador.setAvatares(obtenerAvatares());
-            adaptador.notifyDataSetChanged();
+        if (requestCode == Util.REQUEST_CODE_DISPOSITIVO_SELECCIONADO && resultCode == Activity.RESULT_OK) {
+            adaptador.setAvatares(obtenerAvatares());       //Si el usuario cambio su avatar en la activity DispositivoSeleccinadoA
+            adaptador.notifyDataSetChanged();               //lo actualizamos aqui tambien
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
 
+    /**
+     * crearDialogoCerrarSesion: muestra un dialogo al usuario que le pregunta si desea cerrar sesion
+     */
+    private void crearDialogoCerrarSesion() {
+        AlertDialog.Builder dialogo_cerrar_sesion = Util.crearBuilderDialogo(this,  //para cerrar su sesion en Particle
+                getString(R.string.dialogo_cerrar_sesion), getString(R.string.mensaje_dialogo_cerrar_sesion));
+        dialogo_cerrar_sesion.setPositiveButton(R.string.dialogo_cerrar_sesion_si, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Intent intent = new Intent(getApplicationContext(), IniciarSesionActivity.class);
+                startActivity(intent);
+                finish();
+            }
+        });
+        AlertDialog alert_dialogo = dialogo_cerrar_sesion.create();
+        alert_dialogo.show();
+    }
+
+    /**
+     * dialogoAgregarDispositivo: muestra al usuario un dialogo que le permite indicar el id de un nuevo dispositivo
+     * que quiera agregar a su lista
+     */
     private void dialogoAgregarDispositivo() {
         AlertDialog.Builder dialogo_agregar_dispositivo = Util.crearBuilderDialogo(this,
                 getString(R.string.dialogo_agregar_dispositivo), getString(R.string.mensaje_dialogo_agregar_dispositivo));
 
-        //Creamos el cuadro de texto donde el usuario pondra el id de forma programatica
+        //Creamos el cuadro de texto donde el usuario pondra el id del nuevo dispositivo
         final EditText cuadro_texto = new EditText(this);
         cuadro_texto.setSingleLine();
         cuadro_texto.setInputType(TYPE_CLASS_NUMBER);
@@ -361,9 +344,10 @@ public class DispositivosActivity extends AppCompatActivity {
             int count = 0;
             for (String id_dispositivo: ids_dispositivos){
                 if (Arrays.asList(images).contains(id_dispositivo + getString(R.string.tipo_imagen))){
-                    avatares_dispositivos[count++] = Util.cortarImagenCircuilar(Util.obtenerImagenReducida(directorio_avatares + File.separator +
-                            id_dispositivo + getString(R.string.tipo_imagen), ancho_avatar, ancho_avatar));
-                } else avatares_dispositivos[count++] = Util.cortarImagenCircuilar(BitmapFactory.decodeResource(getResources(), R.mipmap.photon));
+                    avatares_dispositivos[count++] = Util.cortarImagenCircuilar(Util.obtenerImagenReducida(directorio_avatares +
+                            File.separator + id_dispositivo + getString(R.string.tipo_imagen), ancho_avatar, ancho_avatar));
+                } else avatares_dispositivos[count++] = Util.cortarImagenCircuilar(BitmapFactory.decodeResource(getResources(),
+                        R.mipmap.photon));
             }
         }
         else{
@@ -374,8 +358,8 @@ public class DispositivosActivity extends AppCompatActivity {
     }
 
     /**
-     * actualizarConexiones: funcion que se llama desde una clase externa para actualizar el estado de conexion de los dispositivos
-     * en la interfaz grafica, tanto en esta activity como en la activity DispositivoSeleccionadoActivity
+     * actualizarDispositivos: funcion que se llama desde una clase externa para actualizar el estado de conexion y nombre de
+     * los dispositivos en la interfaz grafica, tanto en esta activity como en la activity DispositivoSeleccionadoActivity
      * @param conexiones: lista de tamano igual al numero de dispositivos del usuario con los nuevos estados de conexion actualizados
      */
     public void actualizarDispositivos(ArrayList<String> nombres, ArrayList<Boolean> conexiones){
@@ -383,14 +367,71 @@ public class DispositivosActivity extends AppCompatActivity {
         adaptador.setConexionesDispositivos(conexiones);
         adaptador.notifyDataSetChanged();
 
-        for (int index = 0; index < numero_dispositivos; index++) {     //Actualizamos los ArrayList
+        for (int index = 0; index < numero_dispositivos; index++) {         //Actualizamos los ArrayList
             conexion_dispositivos.set(index, conexiones.get(index));
             nombres_dispositivos.set(index, nombres.get(index));
         }
 
-        if (DispositivoSeleccionadoActivity.getIndexActual() != null)
-            DispositivoSeleccionadoActivity.actualizarDispositivoActual(conexion_dispositivos.get(DispositivoSeleccionadoActivity.getIndexActual()),
+        if (DispositivoSeleccionadoActivity.getIndexActual() != null)       //Actualizamos el dispositivo que se esta mostrando en
+            DispositivoSeleccionadoActivity.actualizarDispositivoActual(    //la activity DispositivoSeleccionado si es que existe uno
+                    conexion_dispositivos.get(DispositivoSeleccionadoActivity.getIndexActual()),
                     nombres_dispositivos.get(DispositivoSeleccionadoActivity.getIndexActual()) ,this);
         Log.v("Actualizacion Conexion", "Se han actualizado los estados de conexion de dispositivos en la UI");
+    }
+
+    /**
+     * obtenerPosicionRealDispositivo: regresa la posicion del dispositivo pulsado por el usuario en la lista total de dispositivos,
+     * esto ya que al filtrar los dispositivos conectados, no tenemos la posicion real en la lista, si no la posicion en la lista
+     * filtrada, esta funcion regresa el valor real ya sea si estan filtrados o no
+     * @param posicion_lista_actual: posicion en la lista filtrada o sin filtrar
+     * @return posicion en la lista sin filtrar (posicion real)
+     */
+    private int obtenerPosicionRealDispositivo(int posicion_lista_actual) {
+        int posicion_sin_filtrar = posicion_lista_actual;
+        if (dispositivos_conectados_filtrados) {
+            posicion_sin_filtrar = 0;
+            int conteo_regresivo = posicion_lista_actual;
+            for (boolean conectado : dispositivos_seleccionados) {
+                if (conectado)
+                    conteo_regresivo--;
+                if (conteo_regresivo == -1)
+                    break;
+                posicion_sin_filtrar++;
+            }
+        }
+        return posicion_sin_filtrar;
+    }
+
+    /**
+     * iniciarActivityDispositivoSeleccionado: inicia la activity DispositivoSeleccionadoActivity con el dispositivo pulsado
+     * por el usuario
+     * @param posicion_real: posicion del dispositivo en la lista real de dispositivos (no la filtrada, si es que se filtro)
+     */
+    private void iniciarActivityDispositivoSeleccionado(final int posicion_real) {
+        Intent intent = new Intent(getApplicationContext(), DispositivoSeleccionadoActivity.class);
+        intent.putExtra("nombre_dispositivo", nombres_dispositivos.get(posicion_real));
+        intent.putExtra("id_dispositivo", ids_dispositivos.get(posicion_real));
+        intent.putExtra("conexion_dispositivo", conexion_dispositivos.get(posicion_real));
+        intent.putExtra("directorio_app", directorio_app.toString());
+        intent.putExtra("directorio_avatares", directorio_avatares.toString());
+        intent.putExtra("almacenamiento_avatares_posible", almacenamiento_avatares_posible);
+        intent.putExtra("index_dispositivo", posicion_real);
+        startActivityForResult(intent, Util.REQUEST_CODE_DISPOSITIVO_SELECCIONADO); //Iniciamos la activity
+        Log.i(Util.TAG_DA, "Se pulso al dispositivo numero: " + posicion_real + ". Iniciando activity DispositivoSeleccionadoActivity");
+        new AsyncTask<Void, Void, Void>(){          //Corremos un segundo hilo que cuente medio segundo para quitar la seleccion
+            @Override                               //del dispositivo pulsado (al pulsarlo se selecciono y se pinto el fondo de gris)
+            protected Void doInBackground(Void... params) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                return null;
+            }
+            @Override
+            protected void onPostExecute(Void aVoid){
+                adaptador.sombrear(false, posicion_real);   //Quitamos el sombreado gris
+            }
+        }.execute();
     }
 }

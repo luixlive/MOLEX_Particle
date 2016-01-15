@@ -45,6 +45,9 @@ public class Util {
 
     //Constantes utilizadas frecuentemente en las clases
     public static final int TIEMPO_VIBRACION = 35;
+    public static final  double RELACION_WIDTH_AVATARES = 1.0 / 3;//Relacion ancho de avatar respecto al smartphone
+    public final static double RELACION_WIDTH_IMAGEN = 1 / 6.0;   //Igual que el anterior pero de la activity DispositivoSeleccionadoA
+    public final static double RELACION_WIDTH_AVATAR = 1 / 2.0;
     public static final int MAX_TAM_IMAGEN_AVATAR = 6000000;      //Maximo tamanio en bits que puede cubrir un avatar
     public final static int MAX_TAM_IMAGEN_MODULO = 2000000;      //Maximo tamanio en bits de la imagen de un modulo
     public final static int NUMERO_MODULOS = 3;                   //Numero de modulos por cada dispositivo SmartPower
@@ -54,6 +57,10 @@ public class Util {
 
     public static final boolean CONECTADO = true;
     public static final boolean DESCONECTADO = false;
+
+    public static final int REQUEST_CODE_DISPOSITIVO_SELECCIONADO = 1214;
+    public final static int REQUEST_CODE_EDITAR_AVATAR = 2913;
+    public final static int REQUEST_CODE_EDITAR_MODULO = 2912;
 
     private static Vibrator vibrador;
     private static Boolean posible_vibrar = null;
@@ -177,10 +184,22 @@ public class Util {
         }
     }
 
+    /**
+     * toast: crea un mensaje pequeno que se muestra unos segundos en pantalla (checar Toasts en Android)
+     * @param activity: contexto de la aplicacion
+     * @param mensaje: mensaje a mostrar en el toast
+     */
     public static void toast(Activity activity, String mensaje){
         Toast.makeText(activity.getApplicationContext(), mensaje, Toast.LENGTH_SHORT).show();
     }
 
+    /**
+     * crearBuilderDialogo: crea el contrsuctor de un dialogo para mostrarlo en pantalla posteriormente
+     * @param activity: contexto de la app
+     * @param titulo: titulo del dialogo
+     * @param mensaje: mensaje del dialogo
+     * @return constructor con las especificaciones dadas
+     */
     public static AlertDialog.Builder crearBuilderDialogo(Activity activity, String titulo, String mensaje){
         AlertDialog.Builder dialogo = new AlertDialog.Builder(activity);
         dialogo.setTitle(titulo);
@@ -259,7 +278,7 @@ public class Util {
             });
         }
 
-        public static void eliminarDispositivo(final Activity activity,
+        public static void eliminarDispositivos(final Activity activity,
                                                final ArrayList<String> ids_dispositivos_seleccionados) {
             Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
                 @Override

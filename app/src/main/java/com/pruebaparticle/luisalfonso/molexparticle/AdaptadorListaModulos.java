@@ -45,6 +45,10 @@ public class AdaptadorListaModulos extends BaseAdapter {
         inflater = (LayoutInflater)activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
     }
 
+    /**
+     * setImagenesModulos: cambia las imagenes de los tres modulos
+     * @param imagenes: arreglo con las nuevas imagenes
+     */
     public void setImagenesModulos(Bitmap imagenes[]){
         System.arraycopy(imagenes, 0, imagen_modulos, 0, Util.NUMERO_MODULOS);
     }
@@ -77,10 +81,10 @@ public class AdaptadorListaModulos extends BaseAdapter {
         tvNombre_modulos[position].setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
+                Util.vibrar(activity);
                 if (vista_modificandose_ahora)
                     cambioNombreListo();
                 vista_modificandose_ahora = true;
-                Util.vibrar(activity);
                 String hint = ((TextView)v).getText().toString();
                 v.setVisibility(View.GONE);
                 EditText etNombre_modulo = (EditText) finalLv.findViewById(R.id.etNombreModulo);
@@ -127,20 +131,35 @@ public class AdaptadorListaModulos extends BaseAdapter {
         return lv;
     }
 
+    /**
+     * notificarEstadoEncendido: avisa al adpatador que un modulo esta encendido
+     * @param posicion: numero dle modulo que se esta informando
+     */
     public void notificarEstadoEncendido(int posicion) {
         tvNombre_modulos[posicion].setTextColor(ContextCompat.getColor(activity, R.color.verde_online));
         modulo_encendido[posicion] = true;
     }
 
+    /**
+     * notificarEstadoApagado: avisa al adaptador que un modulo esta apagado
+     * @param posicion: numero del modulo que se esta informando
+     */
     public void notificarEstadoApagado(int posicion) {
         tvNombre_modulos[posicion].setTextColor(ContextCompat.getColor(activity, R.color.rojo_offline));
         modulo_encendido[posicion] = false;
     }
 
+    /**
+     * notificarEstadoError: se llama si se encuentra un error al querer encontrar el estado de un modulo
+     * @param posicion: modulo cuya lectura de estado fue erronea
+     */
     public void notificarEstadoError(int posicion) {
         tvNombre_modulos[posicion].setTextColor(ContextCompat.getColor(activity, R.color.gris_seleccion));
     }
 
+    /**
+     * cambioNombreListo: se llama cuando se cambia el nombre de un modulo de forma exitosa, guarda dicho nombre
+     */
     public void cambioNombreListo() {
         EditText etNombre_modulo = (EditText)vista_modificandose.findViewById(R.id.etNombreModulo);
         String nuevo_nombre = etNombre_modulo.getText().toString();
@@ -156,6 +175,9 @@ public class AdaptadorListaModulos extends BaseAdapter {
         vista_modificandose_ahora = false;
     }
 
+    /**
+     * cambioNombreCancelado: se llama si no se cambio el nombre del modulo seleccionado de forma exitosa
+     */
     public void cambioNombreCancelado() {
         EditText etNombre_modulo = (EditText)vista_modificandose.findViewById(R.id.etNombreModulo);
         etNombre_modulo.setVisibility(View.GONE);
@@ -164,6 +186,10 @@ public class AdaptadorListaModulos extends BaseAdapter {
         vista_modificandose_ahora = false;
     }
 
+    /**
+     * getNombresModulos: regresa los nombres de los tres modulos
+     * @return arreglo de Strings con los tres nombres
+     */
     public String[] getNombresModulos() {
         String[] nombres_modulos = new String[3];
         nombres_modulos[0] = tvNombre_modulos[0].getText().toString();

@@ -59,8 +59,8 @@ public class HiloActualizarDispositivos implements Runnable {
                 }
                 @Override
                 public void onSuccess(List<ParticleDevice> dispositivos) {
-                    conexion_dispositivos.clear();
-                    nombre_dispositivos.clear();
+                    conexion_dispositivos.clear();      //Se limpian los nombres y estados de conexion antiguos
+                    nombre_dispositivos.clear();        //para obtener los actualizados
                     for (int index = 0; index < dispositivos.size(); index++) {
                         conexion_dispositivos.add(dispositivos.get(index).isConnected());
                         nombre_dispositivos.add(dispositivos.get(index).getName());
