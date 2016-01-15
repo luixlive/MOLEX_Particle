@@ -1,49 +1,63 @@
 <resources>
+    <!-- Strings basicos del sistema -->
     <string name="app_name">SmartPower</string>
+
+    <!-- Strings inicio de sesion -->
+    <string name="log_in_btn">Iniciar Sesión</string>
     <string name="particle_cloud_email_hint">Correo de Particle</string>
     <string name="particle_cloud_pass_hint">Contraseña</string>
-    <string name="log_in_btn">Iniciar Sesión</string>
-    <string name="sesion_iniciada">Sesión Iniciada</string>
-    <string name="sesion_no_iniciada">No se pudo iniciar sesión, revisar credenciales y conexión a internet</string>
-    <string name="almacenamiento_no_escritura">No es posible escribir en el almacenamiento externo</string>
-    <string name="almacenamiento_no_escritura_lectura">No es posible escribir ni leer en el almacenamiento externo</string>
-    <string name="mensaje_dialogo_cambiar_imagen">Selecciona una imagen de tu almacenamiento externo como avatar de este dispositivo</string>
-    <string name="dialogo_cambiar_imagen">Cambiar Avatar</string>
+
+    <!-- Strings de los dialogos que muestra la app -->
     <string name="cambiar_imagen_si">Cambiar</string>
     <string name="cancelar">Cancelar</string>
+    <string name="dialogo_agregar_dispositivo">Agregar Dispositivo</string>
+    <string name="dialogo_agregar_dispositivo_si">Agregar</string>
+    <string name="dialogo_cambiar_imagen">Cambiar Avatar</string>
+    <string name="dialogo_cerrar_sesion">Cerrar Sesión</string>
+    <string name="dialogo_cerrar_sesion_si">Sí</string>
+    <string name="mensaje_dialogo_agregar_dispositivo">Introduce el id del nuevo dispositivo:</string>
+    <string name="mensaje_dialogo_cambiar_imagen">Selecciona una imagen de tu almacenamiento externo como avatar de este dispositivo</string>
+    <string name="mensaje_dialogo_cerrar_sesion">¿Deseas cerrar tu sesión?</string>
+
+    <!-- Strings sobre la conexion de los dispositivos -->
     <string name="online">Conectado</string>
     <string name="offline">Desconectado</string>
-    <string name="error_crear_directorio_avatares">No se pudo crear directorio para avatares</string>
+
+    <!-- Strings tipo de imagen utilizado para guardar y leer del almacenamiento externo -->
     <string name="tipo_imagen">.jpeg</string>
-    <string name="descripcion_avatar_iv">Avatar del dispositivo</string>
+
+    <!-- Strings con descripciones de imagenes y ImageButtons -->
     <string name="descripcion_avatar_grande">Avatar que se muestra en la pantalla principal del dispositivo</string>
+    <string name="descripcion_avatar_iv">Avatar del dispositivo</string>
     <string name="descripcion_boton_home">Boton home que cambia el estado de todos los dispositivos con un click</string>
-    <string name="boton_editar_dispositivo">Editar</string>
-    <string name="tv_nombre_modulo">Nombre: </string>
-    <string name="tv_imagen_modulo">Imágen: </string>
-    <string name="hint_nombre_modulo">Módulo</string>
-    <string name="guardar_modulos">Guardar</string>
-    <string name="sleccionar_imagen_modulo">Seleccionar</string>
-    <string name="descripcion_imagen_modulos">Imagen actual de este módulo</string>
-    <string name="nombre_archivo_nombres_modulos">Nombres.txt</string>
-    <string name="guardado_no_exitoso">No se pudo guardar el nuevo avatar</string>
-    <string name="dialogo_cerrar_sesion">Cerrar Sesión</string>
-    <string name="mensaje_dialogo_cerrar_sesion">¿Deseas cerrar tu sesión?</string>
-    <string name="dialogo_cerrar_sesion_si">Sí</string>
-    <string name="eliminar">Borrar</string>
-    <string name="error_borrar_dispositivos">No se pudo eliminar a los dispositivos</string>
-    <string name="cambios_no_guardados">No se pudieron guardar los cambios</string>
-    <string name="filtrar_dispositivos">Filtrar dispositivos</string>
-    <string name="exito_apagar_todo">Se han apagado todos los módulos</string>
-    <string name="error_apagar_todo">Ha surgido un error al intentar apagar todo</string>
-    <string name="agregar_dispositivos">Agregar Dispositivos</string>
-    <string name="dialogo_agregar_dispositivo">Agregar Dispositivo</string>
-    <string name="mensaje_dialogo_agregar_dispositivo">Introduce el id del nuevo dispositivo:</string>
-    <string name="dispositivo_agregado">Dispositivo añadido</string>
-    <string name="configurar_dispositivo">Configurar Nuevo Dispositivo</string>
-    <string name="descripcion_agregar">Boton para agregar un nuevo dispositivo a la lista por medio de su id.</string>
-    <string name="dialogo_agregar_dispositivo_si">Agregar</string>
-    <string name="cerrar_sesion">Cerrar Sesión</string>
-    <string name="listo">Listo</string>
     <string name="descripcion_encender_apagar_modulo">Encender/apagar modulos</string>
+    <string name="descripcion_imagen_modulos">Imagen actual de este módulo</string>
+
+    <!-- Strings de los items que se encuentran en los menus e la app -->
+    <string name="agregar_dispositivos">Agregar Dispositivos</string>
+    <string name="cerrar_sesion">Cerrar Sesión</string>
+    <string name="configurar_dispositivo">Configurar Nuevo Dispositivo</string>
+    <string name="eliminar">Borrar</string>
+    <string name="filtrar_dispositivos">Filtrar dispositivos</string>
+    <string name="listo">Listo</string>
+
+    <!-- Strings necesarios para las activities que muestran modulos -->
+    <string name="hint_nombre_modulo">Módulo</string>
+    <string name="nombre_archivo_nombres_modulos">Nombres.txt</string>
+
+    <!-- Strings que se utilizan en los diversos toasts que presenta la app al usuario -->
+    <string name="almacenamiento_no_escritura">No es posible escribir en el almacenamiento externo</string>
+    <string name="almacenamiento_no_escritura_lectura">No es posible escribir ni leer en el almacenamiento externo</string>
+    <string name="cambios_no_guardados">No se pudieron guardar los cambios</string>
+    <string name="dispositivo_agregado">Dispositivo añadido</string>
+    <string name="error_agregar_dispositivo">No se puede agregar al dispositivo, asegurarse de que esté conectado</string>
+    <string name="error_apagar_todo">Ha surgido un error al intentar apagar todo</string>
+    <string name="error_borrar_dispositivos">No se pudo eliminar a los dispositivos</string>
+    <string name="error_crear_directorio_avatares">No se pudo crear directorio para avatares</string>
+    <string name="exito_apagar_todo">Se han apagado todos los módulos</string>
+    <string name="guardado_no_exitoso">No se pudo guardar el nuevo avatar</string>
+    <string name="intento_agregar_dispositivo">Buscando dispositivo…</string>
+    <string name="sesion_iniciada">Sesión Iniciada</string>
+    <string name="sesion_no_iniciada">No se pudo iniciar sesión, revisar credenciales y conexión a internet</string>
+
 </resources>

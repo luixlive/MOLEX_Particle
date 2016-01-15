@@ -404,6 +404,7 @@ public class Util {
             Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
                 public Void callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
                     nube_particle.claimDevice(id);
+                    toast(activity, activity.getString(R.string.intento_agregar_dispositivo));
                     return null;
                 }
 
@@ -414,6 +415,7 @@ public class Util {
 
                 @Override
                 public void onFailure(ParticleCloudException e) {
+                    Util.toast(activity, activity.getString(R.string.error_agregar_dispositivo));
                     Log.e(Util.TAG_DA, "No se puede agregar el dispositovo: " + e.getBestMessage());
                 }
             });

@@ -37,6 +37,8 @@
                 android:layout_height="wrap_content"
                 android:textAppearance="?android:attr/textAppearanceLarge"
                 android:visibility="gone"
+                android:singleLine="true"
+                android:imeOptions="actionDone"
                 android:hint=""
                 android:id="@+id/etNombreDispositivoGrande"
                 android:textSize="30sp"

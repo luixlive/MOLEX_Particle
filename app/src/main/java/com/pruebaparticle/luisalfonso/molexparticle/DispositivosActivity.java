@@ -223,7 +223,7 @@ public class DispositivosActivity extends AppCompatActivity {
                             }
                         }
                         Util.ParticleAPI.eliminarDispositivos(DispositivosActivity.this, ids_dispositivos_seleccionados);
-                        break;
+                        //No se pone break para que despues de borrar los dispositivos cierre el menu de contexto
                     case android.R.id.home:
                         for (int index = 0; index < numero_dispositivos; index++)
                             dispositivos_seleccionados[index] = false;

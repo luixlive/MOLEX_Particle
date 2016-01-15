@@ -1,7 +1,7 @@
 /**
  * Autor: Luis Alfonso Chávez Abbadie
  * 20/12/2015
- * Ultima edicion 14/01/2016
+ * Ultima edicion 15/01/2016
  * Proyecto SmartPower
  */
 package com.pruebaparticle.luisalfonso.molexparticle;
@@ -14,6 +14,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
@@ -92,6 +93,17 @@ public class IniciarSesionActivity extends AppCompatActivity {
         boton_iniciar_sesion.setBackgroundColor(ContextCompat.getColor(this, R.color.blanco));
         boton_iniciar_sesion.setTextColor(ContextCompat.getColor(this, R.color.colorPrimary));
         boton_iniciar_sesion.setClickable(false);
+        esconder_teclado();
+    }
+
+    /**
+     * esconder_teclado: esconde el teclado de la pantalla cuando se llama
+     */
+    public void esconder_teclado() {
+        InputMethodManager inputMethodManager = (InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
+        View view = getCurrentFocus();
+        if(view == null) view = new View(this);
+        inputMethodManager.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
     /**
