@@ -33,9 +33,9 @@ import java.util.Arrays;
  */
 public class DispositivoSeleccionadoActivity extends AppCompatActivity {
 
-    private Menu menu;                                      //Informacion del menu que se situa en la parte superior de la Activity
-    private boolean menu_cambio_nombre_modulo = false;
-    private boolean menu_cambio_nombre_dispositivo = false;
+    private Menu menu;
+    private boolean menu_cambio_nombre_modulo = false;      //Banderas que indican si el usuario esta editando el nombre de
+    private boolean menu_cambio_nombre_dispositivo = false; //un modulo o del dispositivo
     private int posicion_modulo_imagen_cambiada;
 
     private String id_dispositivo;              //Informacion del dispositivo enviada por la activity DispositivosActivity
@@ -46,12 +46,10 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
 
     private boolean almacenamiento_modulos_posible;
     private  String directorio_modulos;
-    private String nombre_modulos[] = new String[Util.NUMERO_MODULOS];
 
     private static Integer index_dispositivo = null;
     private static TextView tv_conexion_dispositivo;
     private static TextView tv_nombre_dispositivo;
-    private ListView lv_modulos;
     private ImageView iv_avatar;
 
     private int ancho_imagen;
@@ -60,6 +58,9 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
     private static boolean avatar_cambiado = false;
 
     private AdaptadorListaModulos adaptador;
+
+    private int seleccion = Util.SELECCION_CAMARA; //Variable que almacena la seleccion del usuario para abrir galeria o camara
+    private File ruta_imagen_camara;               //Ruta deonde la camara almacena la fotografia tomada
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,7 +88,7 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
                 onBackPressed();
                 break;
             case R.id.iListo:
-                (menu.findItem(R.id.iListo)).setVisible(false);
+                item.setVisible(false);
                 if (menu_cambio_nombre_modulo) {
                     menu_cambio_nombre_modulo = false;
                     adaptador.cambioNombreListo();
@@ -103,29 +104,6 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
     }
 
     /**
-     * cambiarAvatar: se llama al pulsar el avatar, lanza un dialogo que le permite al usuario elegir si desea cambiar su
-     * avatar
-     * @param imagen: vista de la imagen del avatar
-     */
-    public void cambiarAvatar(View imagen){
-        Util.vibrar(this);
-        AlertDialog.Builder dialogo = Util.crearBuilderDialogo(this, getString(R.string.dialogo_cambiar_imagen),
-                getString(R.string.mensaje_dialogo_cambiar_imagen));
-        dialogo.setPositiveButton(R.string.cambiar_imagen_si, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                Intent intent = new Intent();
-                intent.setType("image/*");
-                intent.setAction(Intent.ACTION_GET_CONTENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
-                startActivityForResult(intent, Util.REQUEST_CODE_EDITAR_AVATAR);
-            }
-        });
-        AlertDialog alert_dialogo = dialogo.create();
-        alert_dialogo.show();
-    }
-
-    /**
      * capturarInformacionDispositivo: recibe la informacion del intent de la activity pasada, que contiene la informacion
      * del dispositivo seleccionado
      */
@@ -136,7 +114,7 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
         nombre_dispositivo = intent.getStringExtra("nombre_dispositivo");
         conexion_dispositivo = intent.getBooleanExtra("conexion_dispositivo", false);
         directorio_avatares = intent.getStringExtra("directorio_avatares");
-        directorio_modulos = intent.getStringExtra("directorio_app") + File.separator + "Modulos" + File.separator + id_dispositivo;
+        directorio_modulos = Util.getDirectorioApp() + File.separator + "Modulos" + File.separator + id_dispositivo;
         almacenamiento_avatares_posible = intent.getBooleanExtra("almacenamiento_avatares_posible", false);
         almacenamiento_modulos_posible = Util.comprobarDirectorio(this, new File(directorio_modulos));
     }
@@ -149,22 +127,21 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
         tv_nombre_dispositivo = (TextView)findViewById(R.id.tvNombreDispositivoGrande);
         tv_nombre_dispositivo.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
-            public boolean onLongClick(View v) {
+            public boolean onLongClick(View texto_nombre_dispositivo) {
                 if (menu_cambio_nombre_modulo) {
                     menu_cambio_nombre_modulo = false;
                     adaptador.cambioNombreListo();
                 }
-                String hint = ((TextView) v).getText().toString();
+                String hint = ((TextView)texto_nombre_dispositivo).getText().toString();
                 EditText etNombre_dispositivo = (EditText) findViewById(R.id.etNombreDispositivoGrande);
                 etNombre_dispositivo.setHint(hint);
-                v.setVisibility(View.GONE);
+                texto_nombre_dispositivo.setVisibility(View.GONE);
                 etNombre_dispositivo.setVisibility(View.VISIBLE);
                 mostrarItemListo();
                 menu_cambio_nombre_dispositivo = true;
                 return true;
             }
         });
-        lv_modulos = (ListView)findViewById(R.id.lvModulos);
         iv_avatar = (ImageView)findViewById(R.id.ivAvatarGrande);
     }
 
@@ -186,7 +163,7 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
         tv_nombre_dispositivo.setText(nombre_dispositivo);
         tv_conexion_dispositivo.setTextColor(ContextCompat.getColor(this, conexion_dispositivo ? R.color.verde_online : R.color.rojo_offline));
         tv_conexion_dispositivo.setText(conexion_dispositivo ? getString(R.string.online) : getString(R.string.offline));
-        extraerAvatar(directorio_avatares, id_dispositivo, almacenamiento_avatares_posible);
+        extraerAvatar();
     }
 
     /**
@@ -195,34 +172,78 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
      */
     private void crearListaModulos() {
         if (almacenamiento_modulos_posible) {
-
-            obtenerNombresModulos();
             Bitmap[] imagen_modulos = obtenerImagenesModulos(); //Ponemos los nombres y las imagenes en listas
 
-            adaptador = new AdaptadorListaModulos(this, nombre_modulos, id_dispositivo, imagen_modulos);
-            lv_modulos.setAdapter(adaptador);
+            adaptador = new AdaptadorListaModulos(this, obtenerNombresModulos(), id_dispositivo, imagen_modulos);
+            ((ListView)findViewById(R.id.lvModulos)).setAdapter(adaptador);
         }
+    }
+
+    /**
+     * cambiarAvatar: se llama al pulsar el avatar, lanza un dialogo que le permite al usuario elegir si desea cambiar su
+     * avatar tomando una foto o seleccionando una imagen de su galeria
+     * @param imagen: vista de la imagen del avatar
+     */
+    public void cambiarAvatar(View imagen){
+        Util.vibrar(this);
+        seleccion = Util.SELECCION_CAMARA;
+        AlertDialog.Builder dialogo_seleccion = new AlertDialog.Builder(DispositivoSeleccionadoActivity.this);
+        CharSequence items[] = new CharSequence[]{getString(R.string.opcion_avatar_1), getString(R.string.opcion_avatar_2)};
+        dialogo_seleccion.setSingleChoiceItems(items, 0, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface d, int posicion) {
+                switch (posicion) {
+                    case Util.SELECCION_CAMARA:
+                        seleccion = Util.SELECCION_CAMARA;
+                        break;
+                    case Util.SELECCION_GALERIA:
+                        seleccion = Util.SELECCION_GALERIA;
+                        break;
+                }
+            }
+        });
+        dialogo_seleccion.setNegativeButton(getString(R.string.cancelar), null);
+        dialogo_seleccion.setTitle(getString(R.string.dialogo_cambiar_imagen));
+        dialogo_seleccion.setPositiveButton(getString(R.string.dialogo_cambiar_imagen_si), new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                switch (seleccion) {
+                    case Util.SELECCION_CAMARA:
+                        ruta_imagen_camara = new File(Util.solicitarFotoCamara(DispositivoSeleccionadoActivity.this,
+                                (directorio_avatares), id_dispositivo));
+                        break;
+                    case Util.SELECCION_GALERIA:
+                        Intent intent = new Intent();
+                        intent.setType("image/*");
+                        intent.setAction(Intent.ACTION_GET_CONTENT);
+                        intent.addCategory(Intent.CATEGORY_OPENABLE);
+                        startActivityForResult(intent, Util.REQUEST_CODE_EDITAR_AVATAR);
+                        break;
+                }
+            }
+        });
+        dialogo_seleccion.show();
     }
 
     /**
      * obtenerNombresModulos: funcion que lee en el almacenamiento externo los nombres de los modulos que el usuario puso a este
      * dispositivo y guarda los Strings en la variable nombre_modulos
      */
-    private void obtenerNombresModulos() {
+    private String[] obtenerNombresModulos() {
+        String nombre_modulos[] = new String[Util.NUMERO_MODULOS];
         File archivo_nombres_modulos = new File(directorio_modulos + File.separator + getString(R.string.nombre_archivo_nombres_modulos));
         FileInputStream stream;
         try {                                                               //Leemos la informacion guardada de los nombres
             stream = new FileInputStream(archivo_nombres_modulos);
             StringBuilder constructor_texto_leido = new StringBuilder();
             int leido;
-            while ((leido = stream.read()) != -1){
-                constructor_texto_leido.append((char)leido);
-            }
+            while ((leido = stream.read()) != -1) constructor_texto_leido.append((char)leido);
             nombre_modulos = constructor_texto_leido.toString().split("\n");
             stream.close();
         } catch (Exception e) {
             Log.e(Util.TAG_DSA, "No se pueden extraer los nombres de los modulos: " + e.toString());
         }
+        return nombre_modulos;
     }
 
     /**
@@ -244,22 +265,17 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
     /**
      * extraerAvatar: obtiene el bitmap desde el directorio, y lo devuelve con la resolucion total para mostrar una imagen mas grande, se
      * hace en un hilo en segundo plano para evitar bloquear el hilo principal si la imagen es muy grande y tarda mucho en leerse
-     * @param directorio_avatares: ruta del directorio donde estan los avatares
-     * @param id_dispositivo: id del dispositivo del avatar que se va a mostrar
-     * @param almacenamiento_avatares_posible: dice si es posible leer el directorio
      */
-    private void extraerAvatar(String directorio_avatares, String id_dispositivo, boolean almacenamiento_avatares_posible) {
+    private void extraerAvatar() {
         if(almacenamiento_avatares_posible) {
-            new AsyncTask<String, Void, Bitmap>() {     //Extraemos el avatar en otro hilo por si tarda mucho la extraccion
+            new AsyncTask<Void, Void, Bitmap>() {     //Extraemos el avatar en otro hilo por si tarda mucho la extraccion
                 @Override
-                protected Bitmap doInBackground(String... directorio_e_id) {
+                protected Bitmap doInBackground(Void... aVoid) {
                     Bitmap avatar;
-                    File directorio_avatares = new File(directorio_e_id[0]);
-                    String id = directorio_e_id[1];
-                    String images[] = directorio_avatares.list();
+                    String images[] = new File(directorio_avatares).list();
 
-                    if (Arrays.asList(images).contains(id + getString(R.string.tipo_imagen))){
-                        avatar = Util.cortarImagenCircuilar(Util.obtenerImagenReducida(directorio_avatares + File.separator + id +
+                    if (Arrays.asList(images).contains(id_dispositivo + getString(R.string.tipo_imagen))){
+                        avatar = Util.cortarImagenCircuilar(Util.obtenerImagenReducida(directorio_avatares + File.separator + id_dispositivo +
                                         getString(R.string.tipo_imagen), ancho_avatar, ancho_avatar));
                     } else avatar = BitmapFactory.decodeResource(getResources(), R.mipmap.photon);
                     return avatar;
@@ -268,7 +284,7 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
                 protected void onPostExecute(Bitmap imagen){
                     iv_avatar.setImageBitmap(imagen);
                 }
-            }.execute(directorio_avatares, id_dispositivo);
+            }.execute();
         }
     }
 
@@ -278,7 +294,7 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
      * @param activity: activity desde la cual se esta llamando, se utiliza para accedes a los recursos de la app
      */
     public static void actualizarDispositivoActual(Boolean conexion_dispositivo, String nombre_dispositivo, Activity activity){
-        if(index_dispositivo != -1){
+        if(index_dispositivo != null){
             tv_conexion_dispositivo.setTextColor(ContextCompat.getColor(activity,
                     (conexion_dispositivo ? R.color.verde_online : R.color.rojo_offline)));
             tv_conexion_dispositivo.setText(conexion_dispositivo ? activity.getString(R.string.online) : activity.getString(R.string.offline));
@@ -288,34 +304,41 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data){
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == Util.REQUEST_CODE_EDITAR_MODULO){
-            if (resultCode == RESULT_OK){
-                Bitmap imagen_nueva = null;
-                try{            //Si se cambia la imagen de un modulo extraemos la nueva imagen y actualizamos las vistas
-                    InputStream stream = getContentResolver().openInputStream(data.getData());
-                    imagen_nueva = BitmapFactory.decodeStream(stream, new Rect(0, 0, ancho_imagen, ancho_imagen), new BitmapFactory.Options());
-                    if (stream != null) stream.close();
-                } catch (Exception e) {
-                    Log.e(Util.TAG_DSA, "No se puede abrir la imagen");
-                    e.printStackTrace();
-                }
-
-                guardarYCambiarImagenModulo(imagen_nueva);
-            }
-        } else if (requestCode == Util.REQUEST_CODE_EDITAR_AVATAR){
-            if (resultCode == RESULT_OK) {
-                try{            //Si se cambia el avatar del dispositivo extraemos la nueva imagen y actualizamos la vista
-                    InputStream stream = getContentResolver().openInputStream(data.getData());
-                    final Bitmap imagen_nueva = BitmapFactory.decodeStream(stream, new Rect(0, 0, ancho_avatar, ancho_avatar), new BitmapFactory.Options());
-                    if (stream != null) stream.close();
-
-                    guardarYCambiarImagenAvatar(imagen_nueva);
-                }catch (Exception e){
-                    Log.e(Util.TAG_DSA, e.toString());
-                }
+        if (resultCode == RESULT_OK){
+            switch (requestCode){
+                case Util.REQUEST_CODE_EDITAR_MODULO:
+                    try{            //Si se cambia la imagen de un modulo extraemos la nueva imagen y actualizamos las vistas
+                        InputStream stream = getContentResolver().openInputStream(data.getData());
+                        Bitmap imagen_nueva = BitmapFactory.decodeStream(stream, new Rect(0, 0, ancho_imagen, ancho_imagen), new BitmapFactory.Options());
+                        if (stream != null) stream.close();
+                        guardarYCambiarImagenModulo(imagen_nueva);
+                    } catch (Exception e) {
+                        Log.e(Util.TAG_DSA, "No se puede abrir la imagen:" + e.getMessage());
+                    }
+                    break;
+                case Util.REQUEST_CODE_EDITAR_AVATAR:
+                    try{            //Si se cambia el avatar del dispositivo extraemos la nueva imagen y actualizamos la vista
+                        InputStream stream = getContentResolver().openInputStream(data.getData());
+                        Bitmap imagen_nueva = BitmapFactory.decodeStream(stream, new Rect(0, 0, ancho_avatar, ancho_avatar), new BitmapFactory.Options());
+                        if (stream != null) stream.close();
+                        guardarYCambiarImagenAvatar(imagen_nueva);
+                    }catch (Exception e){
+                        Log.e(Util.TAG_DSA, e.toString());
+                    }
+                    break;
+                case Util.REQUEST_FOTO_CAMARA:
+                    try{            //Si se cambia la imagen de un modulo extraemos la nueva imagen y actualizamos las vistas
+                        Bitmap imagen_nueva = BitmapFactory.decodeFile(ruta_imagen_camara.toString());
+                        guardarYCambiarImagenAvatar(imagen_nueva);
+                        if (!ruta_imagen_camara.delete())
+                            Log.w(Util.TAG_DSA, "No se pudo eliminar la foto con la calidad completa");
+                    } catch (Exception e) {
+                        Log.e(Util.TAG_DSA, "No se puede abrir la imagen:" + e.getMessage());
+                    }
+                    break;
             }
         }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     /**
@@ -324,7 +347,6 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
      */
     private void guardarYCambiarImagenAvatar(final Bitmap imagen_nueva) {
         new AsyncTask<Bitmap, Void, Boolean>(){
-
             @Override
             protected Boolean doInBackground(Bitmap... imagenes) {
                 File ruta_imagen = new File(directorio_avatares + File.separator + id_dispositivo + getString(R.string.tipo_imagen));
@@ -363,7 +385,6 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
      */
     private void guardarYCambiarImagenModulo(Bitmap imagen_nueva) {
         new AsyncTask<Bitmap, Void, Boolean>(){
-
             @Override
             protected Boolean doInBackground(Bitmap... imagenes) {
                 File ruta_imagen = new File(directorio_modulos + File.separator + (posicion_modulo_imagen_cambiada + 1) +
@@ -440,15 +461,14 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
      * mostrarItemListo: muestra el item "listo" en el menu
      */
     private void mostrarItemListo() {
-        MenuItem item_listo = menu.findItem(R.id.iListo);
-        item_listo.setVisible(true);
+        menu.findItem(R.id.iListo).setVisible(true);
     }
 
     /**
      * esconderItemListo: quita el item "listo" del menu
      */
     private void esconderItemListo() {
-        (menu.findItem(R.id.iListo)).setVisible(false);
+        menu.findItem(R.id.iListo).setVisible(false);
     }
 
     /**

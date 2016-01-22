@@ -85,7 +85,7 @@ public class AdaptadorListaModulos extends BaseAdapter {
                 if (vista_modificandose_ahora)
                     cambioNombreListo();
                 vista_modificandose_ahora = true;
-                String hint = ((TextView)v).getText().toString();
+                String hint = ((TextView) v).getText().toString();
                 v.setVisibility(View.GONE);
                 EditText etNombre_modulo = (EditText) finalLv.findViewById(R.id.etNombreModulo);
                 etNombre_modulo.setHint(hint);
@@ -108,24 +108,29 @@ public class AdaptadorListaModulos extends BaseAdapter {
         boton_encender_apagar_modulo.setOnTouchListener(new View.OnTouchListener() {        //Al pulsar alguno de los botones encender
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN){
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     Util.vibrar(activity);
-                    ((ImageButton)v).setImageBitmap(BitmapFactory.decodeResource(activity.getResources(), R.mipmap.encender_btn_presionado));
-                    if (modulo_encendido[position]) Util.ParticleAPI.encenderModulo(AdaptadorListaModulos.this,
-                            id_dispositivo, position);
-                    else Util.ParticleAPI.apagarModulo(AdaptadorListaModulos.this, id_dispositivo, position);
+                    ((ImageButton) v).setImageBitmap(BitmapFactory.decodeResource(activity.getResources(), R.mipmap.encender_btn_presionado));
+                    if (modulo_encendido[position])
+                        Util.ParticleAPI.apagarModulo(AdaptadorListaModulos.this,
+                                id_dispositivo, position, activity);
+                    else
+                        Util.ParticleAPI.encenderModulo(AdaptadorListaModulos.this, id_dispositivo, position, activity);
                 }
-                if (event.getAction() == MotionEvent.ACTION_UP ||(event.getX() < 0 || event.getY() < 0 ||
-                        event.getX() > boton_encender_apagar_modulo.getWidth() || event.getY() > boton_encender_apagar_modulo.getHeight())){
-                    ((ImageButton)v).setImageBitmap(BitmapFactory.decodeResource(activity.getResources(), R.mipmap.encender_btn));
+                if (event.getAction() == MotionEvent.ACTION_UP || (event.getX() < 0 || event.getY() < 0 ||
+                        event.getX() > boton_encender_apagar_modulo.getWidth() || event.getY() > boton_encender_apagar_modulo.getHeight())) {
+                    ((ImageButton) v).setImageBitmap(BitmapFactory.decodeResource(activity.getResources(), R.mipmap.encender_btn));
                 }
                 return true;
             }
         });
 
-        imagen_modulo.setImageBitmap(imagen_modulos[position]);
-        tvNombre_modulos[position].setText(nombre_modulos[position]);
-        tvNombre_modulos[position].setTextColor(ContextCompat.getColor(activity, R.color.gris_seleccion));
+        if (imagen_modulos[position] != null)
+            imagen_modulo.setImageBitmap(imagen_modulos[position]);
+        if (nombre_modulos[position] != null) {
+            tvNombre_modulos[position].setText(nombre_modulos[position]);
+            tvNombre_modulos[position].setTextColor(ContextCompat.getColor(activity, R.color.gris_seleccion));
+        }
         Util.ParticleAPI.leerVariableEstadoModulo(this, position, id_dispositivo);
 
         return lv;

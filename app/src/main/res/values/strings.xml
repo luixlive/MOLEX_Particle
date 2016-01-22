@@ -12,6 +12,7 @@
     <string name="cancelar">Cancelar</string>
     <string name="dialogo_agregar_dispositivo">Agregar Dispositivo</string>
     <string name="dialogo_agregar_dispositivo_si">Agregar</string>
+    <string name="dialogo_cambiar_imagen_si">Sí</string>
     <string name="dialogo_cambiar_imagen">Cambiar Avatar</string>
     <string name="dialogo_cerrar_sesion">Cerrar Sesión</string>
     <string name="dialogo_cerrar_sesion_si">Sí</string>
@@ -59,5 +60,19 @@
     <string name="intento_agregar_dispositivo">Buscando dispositivo…</string>
     <string name="sesion_iniciada">Sesión Iniciada</string>
     <string name="sesion_no_iniciada">No se pudo iniciar sesión, revisar credenciales y conexión a internet</string>
+    <string name="actualizando_dispositivos">Se actualizará la lista de dispositivos en unos segundos</string>
+    <string name="dialogo_eliminar">Borrar Dispositivos</string>
+    <string name="mensaje_dialogo_eliminar">¿Deseas eliminar los dispositivos seleccionados de tu lista?</string>
+    <string name="dialogo_eliminar_si">Sí</string>
+    <string name="dialogo_configurar_dispositivo">Configurar Dispositivo</string>
+    <string name="mensaje_dialogo_configurar_d">Se reiniciará su sesión al terminar de configurar un nuevo dispositivo. ¿Desea continuar?</string>
+    <string name="dialogo_configurar_si">Sí</string>
+    <string name="reinicio_sesion_fallido">No se pudo reiniciar la sesión</string>
+    <string name="error_encender_modulo">No se pudo encender el módulo</string>
+    <string name="error_apagar_modulo">No se pudo apagar el módulo</string>
+    <string name="no_camara">No se encontró alguna aplicación para tomar fotos</string>
+    <string name="directorio_avatares">Avatares</string>
+    <string name="opcion_avatar_1">Cámara</string>
+    <string name="opcion_avatar_2">Galería</string>
 
 </resources>

@@ -1,7 +1,7 @@
 /**
  * Autor: Luis Alfonso Chávez Abbadie
  * 20/12/2015
- * Ultima edicion 15/01/2016
+ * Ultima edicion 20/01/2016
  * Proyecto SmartPower
  */
 package com.pruebaparticle.luisalfonso.molexparticle;
@@ -25,6 +25,7 @@ import java.io.File;
 import java.util.ArrayList;
 
 import io.particle.android.sdk.cloud.ParticleCloudSDK;
+import io.particle.android.sdk.devicesetup.ParticleDeviceSetupLibrary;
 
 /**
  * Clase IniciarSesionActivity: activity main de la app, donde el usuario inicia sesion en ParticleCloud
@@ -45,8 +46,35 @@ public class IniciarSesionActivity extends AppCompatActivity {
 
         prepararDirectorioApp();
         prepararEditTexts();
-        //Iniciamos el SDK de Particle
+        iniciarSDKsParticle();
+    }
+
+    /**
+     * prepararDirectorioApp: obtiene la ruta a la carpeta de la app y analiza que exista, si no es asi la crea
+     */
+    private void prepararDirectorioApp() {
+        directorio_app = new File(Environment.getExternalStorageDirectory().getAbsolutePath() +
+                File.separator + getString(R.string.app_name));
+        if (!Util.comprobarDirectorio(this, directorio_app))
+            Util.toast(this, getString(R.string.almacenamiento_no_escritura));
+    }
+
+    /**
+     * prepararEditTexts: Obtiene las vistas de los cuadros donde se escribiran el correo y la contrasena y los prepara
+     */
+    private void prepararEditTexts() {
+        AutoCompleteTextView et_email = (AutoCompleteTextView) findViewById(R.id.etEmail);
+        et_contrasena = (EditText) findViewById(R.id.etPass);
+
+        ponerListaUsuariosRegistrados(et_email);
+    }
+
+    /**
+     * iniciarSDKsParticle: Se inician los sdks como se indica en la documentacion oficial
+     */
+    private void iniciarSDKsParticle() {
         ParticleCloudSDK.init(getApplicationContext());
+        ParticleDeviceSetupLibrary.init(getApplicationContext(), DispositivosActivity.class);
     }
 
     /**
@@ -66,25 +94,6 @@ public class IniciarSesionActivity extends AppCompatActivity {
     }
 
     /**
-     * prepararDirectorioApp: obtiene la ruta a la carpeta de la app y analiza que exista, si no es asi la crea
-     */
-    private void prepararDirectorioApp() {
-        directorio_app = new File(Environment.getExternalStorageDirectory().getAbsolutePath() +
-                File.separator + getString(R.string.app_name));
-        Util.comprobarDirectorio(this, directorio_app); //Comprobamos que exista el directorio, si no es asi, lo creamos
-    }
-
-    /**
-     * prepararEditTexts: Obtiene las vistas de los cuadros donde se escribiran el correo y la contrasena y los prepara
-     */
-    private void prepararEditTexts() {
-        AutoCompleteTextView et_email = (AutoCompleteTextView) findViewById(R.id.etEmail);
-        et_contrasena = (EditText) findViewById(R.id.etPass);
-
-        ponerListaUsuariosRegistrados(et_email);
-    }
-
-    /**
      * botonIniciarSesionPulsado: cambia el color del texto y del fondo del boton para aparentar un boton animado
      * @param boton: vista del boton de iniciar sesion
      */
@@ -97,7 +106,7 @@ public class IniciarSesionActivity extends AppCompatActivity {
     }
 
     /**
-     * esconder_teclado: esconde el teclado de la pantalla cuando se llama
+     * esconder_teclado: esconde el teclado de la pantalla cuando pulsa iniciar sesion
      */
     public void esconder_teclado() {
         InputMethodManager inputMethodManager = (InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
@@ -134,7 +143,6 @@ public class IniciarSesionActivity extends AppCompatActivity {
         ArrayAdapter<String> adaptador_autocompletar = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line,
                 usuarios_registrados);
         et_email.setAdapter(adaptador_autocompletar);
-
         et_email.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
@@ -156,11 +164,11 @@ public class IniciarSesionActivity extends AppCompatActivity {
      */
     public void iniciarSesionExito(ArrayList<String> nombres_dispositivos, ArrayList<String> ids_dispositivos,
                                                 ArrayList<String> conexion_dispositivos) {
+        Util.setDirectorioApp(directorio_app.toString() + File.separator + email);
         Intent intent = new Intent(getApplicationContext(), DispositivosActivity.class);    //Enviamos la informacion obtenida
         intent.putStringArrayListExtra("nombres_dispositivos", nombres_dispositivos);       //a la activity DispositivosActivity
         intent.putStringArrayListExtra("ids_dispositivos", ids_dispositivos);
         intent.putStringArrayListExtra("conexion_dispositivos", conexion_dispositivos);
-        intent.putExtra("directorio_app", directorio_app.toString() + File.separator + email);
         finish();
         Log.i(Util.TAG_ISA, "Inicio de sesion exitoso, cambio de Activity a DispositivosActivity");
         startActivity(intent);

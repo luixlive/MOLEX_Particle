@@ -4,10 +4,10 @@
     android:layout_height="match_parent"
     android:weightSum="10">
 
-    <GridView
+    <ListView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:id="@+id/gvDispositivos"/>
+            android:id="@+id/lvDispositivos"/>
 
     <ImageButton
         android:layout_width="wrap_content"

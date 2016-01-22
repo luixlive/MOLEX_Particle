@@ -1,6 +1,6 @@
 <resources>
 
-    <!-- COMENTAR ESTILOS APLICADOS A LOS TEMAS DE LA APP -->
+    <!-- Tema de la App -->
     <style name="AppTheme" parent="Theme.AppCompat.Light">
 
         <item name="colorPrimary">@color/colorPrimary</item>
@@ -26,28 +26,36 @@
         <item name="android:imageButtonStyle">@style/Tema.BotonImagen</item>
         <item name="imageButtonStyle">@style/Tema.BotonImagen</item>
 
+        <!-- Color de cursor, selecciones y otros detalles pequenios -->
         <item name="colorControlNormal">@color/colorPrimary</item>
         <item name="colorControlHighlight">@color/colorPrimaryDark</item>
         <item name="colorControlActivated">@color/colorPrimaryDark</item>
     </style>
 
+    <!-- Estilo de la Action Bar (menu de la parte superior de nuestras activities) -->
     <style name="Tema.ActionBar" parent="@style/Widget.AppCompat.Light.ActionBar">
         <item name="android:background">@color/colorPrimary</item>
         <item name="background">@color/colorPrimary</item>
-
         <item name="android:titleTextStyle">@style/Tema.TextoTitulo</item>
         <item name="titleTextStyle">@style/Tema.TextoTitulo</item>
     </style>
+    <style name="Tema.ActionBarTheme" parent= "@style/ThemeOverlay.AppCompat.ActionBar">
+        <item name="colorControlNormal">@color/blanco</item>
+        <item name="android:layout_gravity">center_horizontal</item>
+    </style>
 
+    <!-- Estilo para los menus -->
     <style name="Tema.ActionMode" parent="@style/Widget.AppCompat.ActionMode">
         <item name="android:background">@color/colorPrimary</item>
         <item name="background">@color/colorPrimary</item>
     </style>
 
+    <!-- Estilo del texto del titulo de la action bar -->
     <style name="Tema.TextoTitulo" parent="@style/TextAppearance.AppCompat.Widget.ActionBar.Title">
         <item name="android:textColor">@color/blanco</item>
     </style>
 
+    <!-- Estilo de los botones -->
     <style name="Tema.Boton" parent="@android:style/Widget.Button">
         <item name="android:background">@color/colorPrimary</item>
         <item name="android:textColor">@color/blanco</item>
@@ -55,15 +63,12 @@
         <item name="android:padding">10dip</item>
     </style>
 
-    <style name="Tema.ActionBarTheme" parent= "@style/ThemeOverlay.AppCompat.ActionBar">
-        <item name="colorControlNormal">@color/blanco</item>
-        <item name="android:layout_gravity">center_horizontal</item>
-    </style>
-
+    <!-- Estilo de los botones con imagen -->
     <style name="Tema.BotonImagen" parent="@android:style/Widget.ImageButton">
         <item name="android:background">@color/blanco</item>
     </style>
 
+    <!-- Estilo de los cuadros de edicion de texto -->
     <style name="Tema.EditTexto" parent="@android:style/Widget.EditText">
         <item name="android:singleLine">true</item>
     </style>

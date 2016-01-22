@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -11,8 +12,10 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
+import android.net.Uri;
 import android.os.Environment;
 import android.os.Vibrator;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.widget.Toast;
@@ -21,11 +24,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 import io.particle.android.sdk.cloud.ParticleCloud;
 import io.particle.android.sdk.cloud.ParticleCloudException;
 import io.particle.android.sdk.cloud.ParticleCloudSDK;
 import io.particle.android.sdk.cloud.ParticleDevice;
+import io.particle.android.sdk.devicesetup.ParticleDeviceSetupLibrary;
 import io.particle.android.sdk.utils.Async;
 
 /**
@@ -54,6 +59,9 @@ public class Util {
     public final static int ERROR = -1;
     public final static int ENCENDIDO = 1;
     public final static int APAGADO = 0;
+    public final static int TIEMPO_MUERTO_HILO_CONEXION = 3000;
+    public final static int SELECCION_CAMARA = 0;
+    public final static int SELECCION_GALERIA = 1;
 
     public static final boolean CONECTADO = true;
     public static final boolean DESCONECTADO = false;
@@ -61,9 +69,11 @@ public class Util {
     public static final int REQUEST_CODE_DISPOSITIVO_SELECCIONADO = 1214;
     public final static int REQUEST_CODE_EDITAR_AVATAR = 2913;
     public final static int REQUEST_CODE_EDITAR_MODULO = 2912;
+    public final static int REQUEST_FOTO_CAMARA = 2101;
 
     private static Vibrator vibrador;
     private static Boolean posible_vibrar = null;
+    private static String directorio_app;
 
     /**
      * vibrar: ocasiona una breve vibracion en el smartphone para indicarle al usuario que se realizo una accion (por
@@ -76,6 +86,21 @@ public class Util {
             posible_vibrar = vibrador.hasVibrator();
         }
         if (posible_vibrar) vibrador.vibrate(TIEMPO_VIBRACION);
+    }
+
+    public static String solicitarFotoCamara(Activity activity, String directorio, String nombre_imagen){
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        File imagen = null;
+        try {
+            imagen = File.createTempFile(nombre_imagen, activity.getString(R.string.tipo_imagen), new File(directorio));
+            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(imagen));
+        } catch (IOException e) {
+            Log.e(TAG_DSA, "No se pudo tomar la foto:" + e.getMessage());
+        }
+        if (takePictureIntent.resolveActivity(activity.getPackageManager()) != null)    //Comprobamos que haya apps que pueden utilizar este intent
+            activity.startActivityForResult(takePictureIntent, REQUEST_FOTO_CAMARA);
+        else toast(activity, activity.getString(R.string.no_camara));
+        return imagen == null ? null : imagen.toString();
     }
 
     /**
@@ -145,15 +170,12 @@ public class Util {
         final int altura = opciones.outHeight;
         final int ancho = opciones.outWidth;
         int inTamanoNecesario = 1;
-
         if (altura > altura_nec || ancho > ancho_nec){
             final int mitad_altura = altura/2;
             final int mitad_ancho = ancho/2;
-
             while ((mitad_altura/inTamanoNecesario) > altura_nec && (mitad_ancho/inTamanoNecesario) > ancho_nec)
                 inTamanoNecesario *= 2;
         }
-
         return inTamanoNecesario;
     }
 
@@ -165,7 +187,7 @@ public class Util {
         String estado_almacenamiento = Environment.getExternalStorageState();
         if (Environment.MEDIA_MOUNTED.equals(estado_almacenamiento)) {      //Si hay un almacenamiento externo montado
             if (!directorio.exists()) {                                 //Si no existe el directorio de la app
-                Log.i(TAG_UTIL, "No existe direcotirio, activity: " + activity.getLocalClassName());
+                Log.i(TAG_UTIL, "No existe directorio, activity: " + activity.getLocalClassName());
                 if (!directorio.mkdirs()) {                             //Si no se puede crear
                     Log.w(TAG_UTIL, "No se pudo crear un directorio, activity" + activity.getLocalClassName());
                     return false;
@@ -214,12 +236,31 @@ public class Util {
         return dialogo;
     }
 
+    public static void setDirectorioApp(String directorioApp) {
+        Util.directorio_app = directorioApp;
+    }
+
+    public static String getDirectorioApp() {
+        return directorio_app;
+    }
+
+    public static void configurarNuevoDispositivo(Activity activity) {
+        ParticleDeviceSetupLibrary.startDeviceSetup(activity);
+    }
+
     /**
      * clase ParticleAPI: Clase auxiliar para hacer lo relacionado con acceder a la nube de Particle
      */
     public static class ParticleAPI{
 
         static private ParticleCloud nube_particle;
+
+        private static String email;
+        private static String contrasena;
+
+        private static ArrayList<String> ultimos_nombres_dispositivos = new ArrayList<>();
+        private static ArrayList<String> ultimos_ids_dispositivos = new ArrayList<>();
+        private static ArrayList<Boolean> ultimas_conexiones_dispositivos = new ArrayList<>();
 
         public static ParticleCloud obtenerNubeParticle(){
             return nube_particle;
@@ -232,6 +273,8 @@ public class Util {
                 public List<ParticleDevice> callApi(@NonNull ParticleCloud nueva_nube_particle) throws ParticleCloudException, IOException {
                     nube_particle = nueva_nube_particle;
                     nueva_nube_particle.logIn(email, contrasena);
+                    ParticleAPI.email = email;
+                    ParticleAPI.contrasena = contrasena;
                     return nueva_nube_particle.getDevices();
                 }
 
@@ -239,17 +282,18 @@ public class Util {
                 public void onSuccess(List<ParticleDevice> ParticleDevices) {
                     Util.toast(activity, activity.getString(R.string.sesion_iniciada));
 
-                    ArrayList<String> nombres_dispositivos = new ArrayList<>();
-                    ArrayList<String> ids_dispositivos = new ArrayList<>();
+                    limpiarUltimaInformacionDispositivos();
                     ArrayList<String> conexion_dispositivos = new ArrayList<>();
                     for (ParticleDevice dispositivo : ParticleDevices) {                  //Obtenemos el id, nombre y estado de conexion de
-                        nombres_dispositivos.add(dispositivo.getName());            //cada dispositivo
-                        ids_dispositivos.add(dispositivo.getID());
+                        ParticleAPI.ultimos_nombres_dispositivos.add(dispositivo.getName());            //cada dispositivo
+                        ParticleAPI.ultimos_ids_dispositivos.add(dispositivo.getID());
+                        ParticleAPI.ultimas_conexiones_dispositivos.add(dispositivo.isConnected());
                         conexion_dispositivos.add(dispositivo.isConnected() ? activity.getString(R.string.online) :
                                 activity.getString(R.string.offline));
                     }
 
-                    activity.iniciarSesionExito(nombres_dispositivos, ids_dispositivos, conexion_dispositivos);
+                    activity.iniciarSesionExito(Util.copiarArrayString(ultimos_nombres_dispositivos),
+                            Util.copiarArrayString(ultimos_ids_dispositivos), conexion_dispositivos);
                 }
 
                 @Override
@@ -261,6 +305,12 @@ public class Util {
             });
         }
 
+        private static void limpiarUltimaInformacionDispositivos() {
+            ParticleAPI.ultimas_conexiones_dispositivos.clear();
+            ParticleAPI.ultimos_ids_dispositivos.clear();
+            ParticleAPI.ultimos_nombres_dispositivos.clear();
+        }
+
         public static void cerrarSesion() {
             Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
                 @Override
@@ -268,9 +318,11 @@ public class Util {
                     nube_particle.logOut();
                     return null;
                 }
+
                 @Override
                 public void onSuccess(Void v) {
                 }
+
                 @Override
                 public void onFailure(ParticleCloudException exception) {
                     Log.e(TAG_UTIL, "No se puede cerrar sesion de Particle");
@@ -280,6 +332,7 @@ public class Util {
 
         public static void eliminarDispositivos(final Activity activity,
                                                final ArrayList<String> ids_dispositivos_seleccionados) {
+            Util.toast(activity, activity.getString(R.string.actualizando_dispositivos));
             Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
                 @Override
                 public Void callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
@@ -404,7 +457,6 @@ public class Util {
             Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
                 public Void callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
                     nube_particle.claimDevice(id);
-                    toast(activity, activity.getString(R.string.intento_agregar_dispositivo));
                     return null;
                 }
 
@@ -421,7 +473,7 @@ public class Util {
             });
         }
 
-        public static void encenderModulo(final AdaptadorListaModulos adaptador, final String id, final int position) {
+        public static void encenderModulo(final AdaptadorListaModulos adaptador, final String id, final int position, final Activity activity) {
             Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
                 public Void callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
                     ParticleDevice dispositivo = nube_particle.getDevice(id);
@@ -442,12 +494,13 @@ public class Util {
 
                 @Override
                 public void onFailure(ParticleCloudException e) {
+                    toast(activity, activity.getString(R.string.error_encender_modulo));
                     Log.e(Util.TAG_DA, "No se puede encender el modulo: " + e.getBestMessage());
                 }
             });
         }
 
-        public static void apagarModulo(final AdaptadorListaModulos adaptador, final String id, final int position) {
+        public static void apagarModulo(final AdaptadorListaModulos adaptador, final String id, final int position, final Activity activity) {
             Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
                 public Void callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
                     ParticleDevice dispositivo = nube_particle.getDevice(id);
@@ -468,9 +521,87 @@ public class Util {
 
                 @Override
                 public void onFailure(ParticleCloudException e) {
+                    toast(activity, activity.getString(R.string.error_apagar_modulo));
                     Log.e(Util.TAG_DA, "No se puede apagar el modulo: " + e.getBestMessage());
                 }
             });
         }
+
+        public static ArrayList<String> getUltimosNombresDispositivos() {
+            return ultimos_nombres_dispositivos;
+        }
+
+        public static ArrayList<String> getUltimosIdsDispositivos() {
+            return ultimos_ids_dispositivos;
+        }
+
+        public static ArrayList<Boolean> getUltimasConexionesDispositivos() {
+            return ultimas_conexiones_dispositivos;
+        }
+
+        public static void actualizarInformacionDispositivos(final HiloActualizarDispositivos hilo, final boolean interrupted,
+                                                             final Semaphore semaforo) {
+            Async.executeAsync(Util.ParticleAPI.obtenerNubeParticle(), new Async.ApiWork<ParticleCloud, List<ParticleDevice>>() {
+                @Override
+                public List<ParticleDevice> callApi(@NonNull ParticleCloud nube_particle) throws ParticleCloudException, IOException {
+                    List<ParticleDevice> dispositivos = null;
+                    try {
+                        semaforo.acquire();
+                        if (!interrupted) dispositivos = nube_particle.getDevices();
+                    } catch (InterruptedException e) {
+                        Log.e(Util.TAG_HAD, "Error adquiriendo los dispositivos");
+                    }
+                    semaforo.release();
+                    return dispositivos;
+                }
+                @Override
+                public void onSuccess(List<ParticleDevice> dispositivos) {
+                    limpiarUltimaInformacionDispositivos();
+                    for (ParticleDevice dispositivo: dispositivos){
+                        ParticleAPI.ultimos_nombres_dispositivos.add(dispositivo.getName());
+                        ParticleAPI.ultimos_ids_dispositivos.add(dispositivo.getID());
+                        ParticleAPI.ultimas_conexiones_dispositivos.add(dispositivo.isConnected());
+                    }
+                    hilo.actualizacionExitosa(Util.copiarArrayString(ultimos_nombres_dispositivos),
+                            Util.copiarArrayString(ultimos_ids_dispositivos), Util.copiarArrayBoolean(ultimas_conexiones_dispositivos));
+                }
+                @Override
+                public void onFailure(ParticleCloudException exception) {
+                }
+            });
+        }
+
+        public static void reiniciarSesion(final DispositivosActivity activity) {
+            Async.executeAsync(nube_particle, new Async.ApiWork<ParticleCloud, Void>() {
+                @Override
+                public Void callApi(@NonNull ParticleCloud nueva_nube_particle) throws ParticleCloudException, IOException {
+                    nueva_nube_particle.logIn(email, contrasena);
+                    return null;
+                }
+
+                @Override
+                public void onSuccess(Void aVoid) {
+                }
+
+                @Override
+                public void onFailure(ParticleCloudException e) {
+                    Util.toast(activity, activity.getString(R.string.sesion_no_iniciada));
+                    activity.reiniciarSesionFracaso();
+                    Log.w(TAG_UTIL, "No se pudo reiniciar sesion");
+                }
+            });
+        }
+    }
+
+    private static ArrayList<String> copiarArrayString(ArrayList<String> arreglo) {
+        ArrayList<String> copia = new ArrayList<>();
+        for (int i = 0; i < arreglo.size(); i++) copia.add(arreglo.get(i));
+        return copia;
+    }
+
+    private static ArrayList<Boolean> copiarArrayBoolean(ArrayList<Boolean> arreglo) {
+        ArrayList<Boolean> copia = new ArrayList<>();
+        for (int i = 0; i < arreglo.size(); i++) copia.add(arreglo.get(i));
+        return copia;
     }
 }

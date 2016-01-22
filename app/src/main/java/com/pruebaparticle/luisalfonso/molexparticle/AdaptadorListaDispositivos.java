@@ -67,6 +67,10 @@ public class AdaptadorListaDispositivos extends BaseAdapter {
         nombres_dispositivos.clear();
         for (int index = 0; index < nombres.size(); index++)
             nombres_dispositivos.add(nombres.get(index));
+        if (nombres_dispositivos.size() != dispositivos_seleccionados.size()){
+            dispositivos_seleccionados = new ArrayList<>();
+            for (int index = 0; index < nombres_dispositivos.size(); index++) dispositivos_seleccionados.add(false);
+        }
     }
 
     /**
@@ -154,7 +158,7 @@ public class AdaptadorListaDispositivos extends BaseAdapter {
      * @param avatares: arreglo con los nuevos avatares
      */
     public void setAvatares(Bitmap[] avatares) {
-        System.arraycopy(avatares, 0, avatares_dispositivos, 0, avatares_dispositivos.length);
+        avatares_dispositivos = avatares;
     }
 
     /**
