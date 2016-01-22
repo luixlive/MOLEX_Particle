@@ -186,43 +186,7 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
      */
     public void cambiarAvatar(View imagen){
         Util.vibrar(this);
-        seleccion = Util.SELECCION_CAMARA;
-        AlertDialog.Builder dialogo_seleccion = new AlertDialog.Builder(DispositivoSeleccionadoActivity.this);
-        CharSequence items[] = new CharSequence[]{getString(R.string.opcion_avatar_1), getString(R.string.opcion_avatar_2)};
-        dialogo_seleccion.setSingleChoiceItems(items, 0, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface d, int posicion) {
-                switch (posicion) {
-                    case Util.SELECCION_CAMARA:
-                        seleccion = Util.SELECCION_CAMARA;
-                        break;
-                    case Util.SELECCION_GALERIA:
-                        seleccion = Util.SELECCION_GALERIA;
-                        break;
-                }
-            }
-        });
-        dialogo_seleccion.setNegativeButton(getString(R.string.cancelar), null);
-        dialogo_seleccion.setTitle(getString(R.string.dialogo_cambiar_imagen));
-        dialogo_seleccion.setPositiveButton(getString(R.string.dialogo_cambiar_imagen_si), new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                switch (seleccion) {
-                    case Util.SELECCION_CAMARA:
-                        ruta_imagen_camara = new File(Util.solicitarFotoCamara(DispositivoSeleccionadoActivity.this,
-                                (directorio_avatares), id_dispositivo));
-                        break;
-                    case Util.SELECCION_GALERIA:
-                        Intent intent = new Intent();
-                        intent.setType("image/*");
-                        intent.setAction(Intent.ACTION_GET_CONTENT);
-                        intent.addCategory(Intent.CATEGORY_OPENABLE);
-                        startActivityForResult(intent, Util.REQUEST_CODE_EDITAR_AVATAR);
-                        break;
-                }
-            }
-        });
-        dialogo_seleccion.show();
+        crearDialogoSeleccionImagen(Util.REQUEST_CODE_EDITAR_AVATAR);
     }
 
     /**
@@ -305,6 +269,7 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data){
         if (resultCode == RESULT_OK){
+            int request_camara = Util.REQUEST_VOID;
             switch (requestCode){
                 case Util.REQUEST_CODE_EDITAR_MODULO:
                     try{            //Si se cambia la imagen de un modulo extraemos la nueva imagen y actualizamos las vistas
@@ -326,16 +291,23 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
                         Log.e(Util.TAG_DSA, e.toString());
                     }
                     break;
-                case Util.REQUEST_FOTO_CAMARA:
-                    try{            //Si se cambia la imagen de un modulo extraemos la nueva imagen y actualizamos las vistas
-                        Bitmap imagen_nueva = BitmapFactory.decodeFile(ruta_imagen_camara.toString());
-                        guardarYCambiarImagenAvatar(imagen_nueva);
-                        if (!ruta_imagen_camara.delete())
-                            Log.w(Util.TAG_DSA, "No se pudo eliminar la foto con la calidad completa");
-                    } catch (Exception e) {
-                        Log.e(Util.TAG_DSA, "No se puede abrir la imagen:" + e.getMessage());
-                    }
+                case Util.REQUEST_FOTO_CAMARA_AVATAR:
+                    request_camara = Util.REQUEST_FOTO_CAMARA_AVATAR;
                     break;
+                case Util.REQUEST_FOTO_CAMARA_MODULO:
+                    request_camara = Util.REQUEST_FOTO_CAMARA_MODULO;
+                    break;
+            }
+            if (request_camara != Util.REQUEST_VOID){
+                try{
+                    Bitmap imagen_nueva = BitmapFactory.decodeFile(ruta_imagen_camara.toString());
+                    if (request_camara == Util.REQUEST_FOTO_CAMARA_MODULO) guardarYCambiarImagenModulo(imagen_nueva);
+                    else guardarYCambiarImagenAvatar(imagen_nueva);
+                    if (!ruta_imagen_camara.delete())
+                        Log.w(Util.TAG_DSA, "No se pudo eliminar la foto con la calidad completa");
+                } catch (Exception e) {
+                    Log.e(Util.TAG_DSA, "No se puede abrir la imagen:" + e.getMessage());
+                }
             }
         }
         super.onActivityResult(requestCode, resultCode, data);
@@ -507,11 +479,53 @@ public class DispositivoSeleccionadoActivity extends AppCompatActivity {
      */
     public void cambioImagenModulo(int numero_modulo) {
         posicion_modulo_imagen_cambiada = numero_modulo;
-        Intent intent = new Intent();
-        intent.setType("image/*");
-        intent.setAction(Intent.ACTION_GET_CONTENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        startActivityForResult(intent, Util.REQUEST_CODE_EDITAR_MODULO);
+        Util.vibrar(this);
+        crearDialogoSeleccionImagen(Util.REQUEST_CODE_EDITAR_MODULO);
+    }
+
+    /**
+     * crearDialogoSeleccionImagen: genera un dialogo permitiendo al usuario elegir si obtener una imagen de su galeria
+     * o tomar una foto
+     * @param request: request que indica si se va a cambiar el avatar o un modulo
+     */
+    public void crearDialogoSeleccionImagen(final int request){
+        seleccion = Util.SELECCION_CAMARA;
+        AlertDialog.Builder dialogo_seleccion = new AlertDialog.Builder(DispositivoSeleccionadoActivity.this);
+        CharSequence items[] = new CharSequence[]{getString(R.string.opcion_avatar_1), getString(R.string.opcion_avatar_2)};
+        dialogo_seleccion.setSingleChoiceItems(items, 0, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface d, int posicion) {
+                switch (posicion) {
+                    case Util.SELECCION_CAMARA:
+                        seleccion = Util.SELECCION_CAMARA;
+                        break;
+                    case Util.SELECCION_GALERIA:
+                        seleccion = Util.SELECCION_GALERIA;
+                        break;
+                }
+            }
+        });
+        dialogo_seleccion.setNegativeButton(getString(R.string.cancelar), null);
+        dialogo_seleccion.setTitle(getString(R.string.dialogo_cambiar_imagen));
+        dialogo_seleccion.setPositiveButton(getString(R.string.dialogo_cambiar_imagen_si), new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                switch (seleccion) {
+                    case Util.SELECCION_CAMARA:
+                        ruta_imagen_camara = new File(Util.solicitarFotoCamara(DispositivoSeleccionadoActivity.this,
+                                (directorio_avatares), id_dispositivo, request));
+                        break;
+                    case Util.SELECCION_GALERIA:
+                        Intent intent = new Intent();
+                        intent.setType("image/*");
+                        intent.setAction(Intent.ACTION_GET_CONTENT);
+                        intent.addCategory(Intent.CATEGORY_OPENABLE);
+                        startActivityForResult(intent, request);
+                        break;
+                }
+            }
+        });
+        dialogo_seleccion.show();
     }
 
     @Override

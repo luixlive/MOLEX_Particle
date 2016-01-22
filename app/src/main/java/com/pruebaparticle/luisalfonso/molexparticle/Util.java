@@ -69,7 +69,9 @@ public class Util {
     public static final int REQUEST_CODE_DISPOSITIVO_SELECCIONADO = 1214;
     public final static int REQUEST_CODE_EDITAR_AVATAR = 2913;
     public final static int REQUEST_CODE_EDITAR_MODULO = 2912;
-    public final static int REQUEST_FOTO_CAMARA = 2101;
+    public final static int REQUEST_FOTO_CAMARA_AVATAR = 2101;
+    public final static int REQUEST_FOTO_CAMARA_MODULO = 2201;
+    public final static int REQUEST_VOID = -1;
 
     private static Vibrator vibrador;
     private static Boolean posible_vibrar = null;
@@ -88,7 +90,17 @@ public class Util {
         if (posible_vibrar) vibrador.vibrate(TIEMPO_VIBRACION);
     }
 
-    public static String solicitarFotoCamara(Activity activity, String directorio, String nombre_imagen){
+    /**
+     * solicitarFotoCamara: solicita al sistema que le de la posibilidad al usuario de tomar una fotografia y regresa la
+     * ruta donde se almaceno la imagen
+     * @param activity: contexto desde el cual se llama a la funcion
+     * @param directorio: directorio donde se va a almacenar la imagen
+     * @param nombre_imagen: nombre de la imagen (el intent agrega un numero random al final del nombre, por lo que se almacena
+     *                     ese nombre nuevo y se retorna toda la ruta con el nuevo nombre)
+     * @param request: request que indica si se quiere cambiar un modulo o el avatar
+     * @return ruta de la imagen guardada por la camara
+     */
+    public static String solicitarFotoCamara(Activity activity, String directorio, String nombre_imagen, int request){
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         File imagen = null;
         try {
@@ -97,9 +109,12 @@ public class Util {
         } catch (IOException e) {
             Log.e(TAG_DSA, "No se pudo tomar la foto:" + e.getMessage());
         }
-        if (takePictureIntent.resolveActivity(activity.getPackageManager()) != null)    //Comprobamos que haya apps que pueden utilizar este intent
-            activity.startActivityForResult(takePictureIntent, REQUEST_FOTO_CAMARA);
-        else toast(activity, activity.getString(R.string.no_camara));
+        if (takePictureIntent.resolveActivity(activity.getPackageManager()) != null) {    //Comprobamos que haya apps que pueden utilizar este intent
+            if (request == REQUEST_CODE_EDITAR_MODULO)
+                activity.startActivityForResult(takePictureIntent, REQUEST_FOTO_CAMARA_MODULO);
+            else if (request == REQUEST_CODE_EDITAR_AVATAR)
+                activity.startActivityForResult(takePictureIntent, REQUEST_FOTO_CAMARA_AVATAR);
+        } else toast(activity, activity.getString(R.string.no_camara));
         return imagen == null ? null : imagen.toString();
     }
 
@@ -236,10 +251,18 @@ public class Util {
         return dialogo;
     }
 
+    /**
+     * setDirectorioApp: cambia la ruta del directorio de la app
+     * @param directorioApp: nueva ruta en forma de string
+     */
     public static void setDirectorioApp(String directorioApp) {
         Util.directorio_app = directorioApp;
     }
 
+    /**
+     * getDirectorioApp: regresa el directorio en el almacenamiento externo de la app
+     * @return string con la ruta del directorio
+     */
     public static String getDirectorioApp() {
         return directorio_app;
     }

@@ -50,6 +50,12 @@ public class HiloActualizarDispositivos implements Runnable {
         Log.i(Util.TAG_HAD, "Se detuvo el hilo para actualizar la conexion");
     }
 
+    /**
+     * actualizacionExitosa: se llama cuando se terminan de actualizar los dispositivos en la ParticleAPI
+     * @param ultimos_nombres_dispositivos: nombres actualizados
+     * @param ultimos_ids_dispositivos: ids actualizados
+     * @param ultimas_conexiones_dispositivos: conexiones actualizadas
+     */
     public void actualizacionExitosa(ArrayList<String> ultimos_nombres_dispositivos, ArrayList<String> ultimos_ids_dispositivos,
                                      ArrayList<Boolean> ultimas_conexiones_dispositivos) {
         conexion_dispositivos = ultimas_conexiones_dispositivos;      //Se limpian los nombres y estados de conexion antiguos
