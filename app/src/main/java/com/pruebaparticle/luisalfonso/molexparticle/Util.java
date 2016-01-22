@@ -481,6 +481,8 @@ public class Util {
                     parametro.add(String.valueOf(position));
                     try {
                         dispositivo.callFunction("encender_modulo", parametro);
+                        Log.i(TAG_UTIL, "Se llamo la siguiente funcion: \"encender_modulo\", con un List<String> como parametro con" +
+                                " un solo elemento: " + parametro.get(0));
                     } catch (ParticleDevice.FunctionDoesNotExistException e) {
                         throw new ParticleCloudException(e);
                     }
@@ -508,6 +510,8 @@ public class Util {
                     parametro.add(String.valueOf(position));
                     try {
                         dispositivo.callFunction("apagar_modulo", parametro);
+                        Log.i(TAG_UTIL, "Se llamo la siguiente funcion: \"apagar_modulo\", con un List<String> como parametro con" +
+                                " un solo elemento: " + parametro.get(0));
                     } catch (ParticleDevice.FunctionDoesNotExistException e) {
                         throw new ParticleCloudException(e);
                     }
