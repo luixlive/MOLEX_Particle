@@ -506,6 +506,7 @@ public class Util {
                         for (String funcName : dispositivo.getFunctions()) {
                             Log.i(TAG_UTIL, "Device has function: " + funcName);
                         }
+
                         dispositivo.callFunction("encender_modulo", parametro);
                         Log.i(TAG_UTIL, "Se llamo la siguiente funcion: \"encender_modulo\", con un List<String> como parametro con" +
                                 " un solo elemento: " + parametro.get(0));
